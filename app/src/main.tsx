@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { StrictMode, useEffect, useMemo, useState } from 'react';
+import { createRoot } from 'react-dom/client';
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import {
   AlertTriangle, Check, ChevronDown, Copy, Eye, EyeOff, FileDown, FileUp,
@@ -297,3 +298,9 @@ function passwordStrength(password: string) {
   return { level, label: password ? level[0].toUpperCase() + level.slice(1) : 'No password', percent: Math.min(100, score / 6 * 100) };
 }
 export default App;
+
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+);
