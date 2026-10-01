@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use tauri::State;
+use tauri_plugin_dialog::DialogExt;
 use vault::{
     CredentialRecord, KeychainStatus, VaultError, VaultSession, VaultSummary,
 };
@@ -12,6 +13,33 @@ type SharedVault = Arc<Mutex<VaultSession>>;
 
 fn shared(state: &State<'_, SharedVault>) -> Result<std::sync::MutexGuard<'_, VaultSession>, String> {
     state.lock().map_err(|_| "Vault state lock poisoned".to_string())
+}
+
+#[tauri::command]
+async fn pick_open_kdbx(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let selected = app
+        .dialog()
+        .file()
+        .add_filter("KeePass database", &["kdbx"])
+        .blocking_pick_file();
+
+    selected
+        .map(|file| file.into_path().map(|path| path.display().to_string()).map_err(|error| error.to_string()))
+        .transpose()
+}
+
+#[tauri::command]
+async fn pick_save_kdbx(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let selected = app
+        .dialog()
+        .file()
+        .add_filter("KeePass database", &["kdbx"])
+        .set_file_name("Palmi PasswordVault.kdbx")
+        .blocking_save_file();
+
+    selected
+        .map(|file| file.into_path().map(|path| path.display().to_string()).map_err(|error| error.to_string()))
+        .transpose()
 }
 
 #[tauri::command]
@@ -148,6 +176,8 @@ pub fn run() {
         .manage(shared_vault)
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
+            pick_open_kdbx,
+            pick_save_kdbx,
             vault_status,
             vault_create,
             vault_open,
