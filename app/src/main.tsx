@@ -1,25 +1,26 @@
 import { StrictMode, useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
+import { open, save } from '@tauri-apps/plugin-dialog';
 import {
   AlertTriangle, Check, ChevronDown, Copy, Eye, EyeOff, FileDown, FileUp,
-  KeyRound, LayoutDashboard, Lock, Pencil, Plus, Search,
-  Shield, Sun, Trash2, Unlock, X, Zap
+  KeyRound, LayoutDashboard, Lock, Pencil, Plus, Search, Shield, Sun,
+  Trash2, Unlock, X, Zap
 } from 'lucide-react';
+import { nativeVault, type Credential, type VaultSummary } from './vaultApi';
 import './styles.css';
 
 type Theme = 'light' | 'dark' | 'system';
 type Page = 'Dashboard' | 'Credentials' | 'Categories' | 'Security' | 'Backup';
 type Importance = 'Normal' | 'High' | 'Critical';
+type Modal = 'edit' | 'view' | 'master' | null;
+type VaultAction = 'create' | 'open' | 'import' | 'keychain' | null;
 
-type Credential = {
-  id: string; service: string; category: string; username: string; url: string;
-  password: string; notes: string; twofa: boolean; importance: Importance; updated: string;
-};
-
+const isTauri = '__TAURI_INTERNALS__' in window;
 const categories = ['Development', 'Finance', 'Email', 'Social', 'Work', 'Gaming', 'Shopping', 'Cloud', 'Government', 'Other'];
-const emptyForm: Omit<Credential, 'id' | 'updated'> = {
-  service: '', category: 'Development', username: '', url: '', password: '', notes: '', twofa: false, importance: 'Normal'
+const emptyForm = {
+  service: '', category: 'Development', username: '', url: '', password: '',
+  notes: '', twofa: false, importance: 'Normal' as Importance
 };
 
 function App() {
@@ -27,15 +28,18 @@ function App() {
   const [dark, setDark] = useState(false);
   const [page, setPage] = useState<Page>('Dashboard');
   const [credentials, setCredentials] = useState<Credential[]>([]);
+  const [summary, setSummary] = useState<VaultSummary | null>(null);
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('All');
   const [importance, setImportance] = useState<Importance | 'All'>('All');
-  const [modal, setModal] = useState<'edit' | 'view' | null>(null);
+  const [modal, setModal] = useState<Modal>(null);
+  const [vaultAction, setVaultAction] = useState<VaultAction>(null);
+  const [masterPassword, setMasterPassword] = useState('');
   const [selected, setSelected] = useState<Credential | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [formPasswordVisible, setFormPasswordVisible] = useState(false);
   const [toast, setToast] = useState('');
-  const [locked, setLocked] = useState(false);
+  const [error, setError] = useState('');
   const [mobileNav, setMobileNav] = useState(false);
 
   useEffect(() => {
@@ -48,8 +52,13 @@ function App() {
   }, [theme]);
 
   useEffect(() => {
+    if (!isTauri) return;
+    nativeVault.status().then(setSummary).catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
     if (!toast) return;
-    const timer = window.setTimeout(() => setToast(''), 2600);
+    const timer = window.setTimeout(() => setToast(''), 2800);
     return () => window.clearTimeout(timer);
   }, [toast]);
 
@@ -59,6 +68,81 @@ function App() {
       && (category === 'All' || credential.category === category)
       && (importance === 'All' || credential.importance === importance);
   }), [credentials, query, category, importance]);
+
+  const refresh = async (nextSummary?: VaultSummary) => {
+    const next = nextSummary ?? await nativeVault.status();
+    setSummary(next);
+    if (!next.locked) setCredentials(await nativeVault.credentials());
+    else setCredentials([]);
+  };
+
+  const runNative = async (operation: () => Promise<VaultSummary | void>, success: string) => {
+    try {
+      setError('');
+      const result = await operation();
+      if (result && typeof result === 'object' && 'locked' in result) await refresh(result as VaultSummary);
+      else if (summary && !summary.locked) await refresh();
+      setToast(success);
+    } catch (cause) {
+      const message = String(cause);
+      setError(message);
+      if (message.toLowerCase().includes('vault is locked')) {
+        setCredentials([]);
+        setSummary((current) => current ? { ...current, locked: true, credentialCount: 0 } : current);
+      }
+    }
+  };
+
+  const chooseVaultFile = async (kind: 'open' | 'save') => {
+    if (!isTauri) {
+      setError('Native file dialogs are available when running the Tauri desktop app.');
+      return null;
+    }
+    if (kind === 'open') {
+      return await open({ multiple: false, directory: false, filters: [{ name: 'KeePass database', extensions: ['kdbx'] }] });
+    }
+    return await save({ filters: [{ name: 'KeePass database', extensions: ['kdbx'] }], defaultPath: 'Palmi PasswordVault.kdbx' });
+  };
+
+  const startVaultAction = (action: VaultAction) => {
+    setMasterPassword('');
+    setError('');
+    setVaultAction(action);
+    setModal('master');
+  };
+
+  const submitMasterPassword = async () => {
+    if (!masterPassword) {
+      setError('Master password is required.');
+      return;
+    }
+    const action = vaultAction;
+    try {
+      let path: string | null = null;
+      if (action === 'keychain') {
+        if (!summary?.path) {
+          setError('Open a vault path first.');
+          return;
+        }
+        await runNative(() => nativeVault.openWithKeychain(summary.path!), 'Vault unlocked with the OS keychain.');
+      } else {
+        path = await chooseVaultFile(action === 'create' ? 'save' : 'open');
+        if (!path || Array.isArray(path)) return;
+        const result = action === 'create'
+          ? await nativeVault.create(path, masterPassword)
+          : action === 'import'
+            ? await nativeVault.import(path, masterPassword)
+            : await nativeVault.open(path, masterPassword);
+        await refresh(result);
+        setToast(action === 'create' ? 'Encrypted vault created.' : 'Encrypted vault opened.');
+      }
+      setModal(null);
+      setVaultAction(null);
+      setMasterPassword('');
+    } catch (cause) {
+      setError(String(cause));
+    }
+  };
 
   const openNew = () => {
     setSelected(null); setForm(emptyForm); setFormPasswordVisible(false); setModal('edit');
@@ -75,30 +159,32 @@ function App() {
     setModal('edit');
   };
 
-  const saveCredential = () => {
-    if (!form.service.trim()) { setToast('Service name is required.'); return; }
-    if (selected) {
-      setCredentials((items) => items.map((item) => item.id === selected.id
-        ? { ...item, ...form, updated: new Date().toISOString() } : item));
-      setToast('Credential updated in this session.');
-    } else {
-      setCredentials((items) => [...items, { ...form, id: crypto.randomUUID(), updated: new Date().toISOString() }]);
-      setToast('Credential added to this session.');
-    }
+  const saveCredential = async () => {
+    if (!form.service.trim()) { setError('Service name is required.'); return; }
+    if (!form.password) { setError('Password is required.'); return; }
+    const credential: Credential = {
+      ...form,
+      id: selected?.id || '',
+      updated: new Date().toISOString()
+    };
+    await runNative(
+      () => nativeVault.upsert(credential),
+      selected ? 'Credential saved to the encrypted vault.' : 'Credential added to the encrypted vault.'
+    );
     setModal(null);
   };
 
-  const removeCredential = (credential: Credential) => {
-    if (!window.confirm('Delete "' + credential.service + '" from this session?')) return;
-    setCredentials((items) => items.filter((item) => item.id !== credential.id));
-    setModal(null); setSelected(null); setToast('Credential deleted.');
+  const removeCredential = async (credential: Credential) => {
+    if (!window.confirm('Delete "' + credential.service + '" from the encrypted vault?')) return;
+    await runNative(() => nativeVault.delete(credential.id), 'Credential deleted.');
+    setModal(null); setSelected(null);
   };
 
   const copyValue = async (value: string, label: string) => {
     try {
       await navigator.clipboard.writeText(value);
-      setToast(label + ' copied. Clipboard should be cleared manually after use.');
-    } catch { setToast('Clipboard access is unavailable.'); }
+      setToast(label + ' copied. Clear the clipboard after use.');
+    } catch { setError('Clipboard access is unavailable.'); }
   };
 
   const generatePassword = () => {
@@ -108,22 +194,44 @@ function App() {
     setFormPasswordVisible(true);
   };
 
-  const lockVault = () => {
-    setCredentials([]); setSelected(null); setModal(null); setLocked(true);
-    setToast('Session cleared. Native encrypted vault unlock is still required.');
+  const lockVault = async () => {
+    try {
+      if (isTauri) await nativeVault.lock();
+      setCredentials([]);
+      setSummary((current) => current ? { ...current, locked: true, credentialCount: 0 } : null);
+      setSelected(null);
+      setModal(null);
+      setToast('Vault locked and sensitive session data cleared.');
+    } catch (cause) { setError(String(cause)); }
   };
 
   const nav = (next: Page) => { setPage(next); setMobileNav(false); };
 
-  if (locked) {
+  if (!isTauri) {
+    return <div className={'app ' + (dark ? 'dark' : '')}><div className="lockedScreen"><div className="lockedCard">
+      <div className="brandMark"><Shield /></div><span className="eyebrow">PALMI-D3V / DESKTOP ONLY</span>
+      <h1>Native vault required</h1>
+      <p>PasswordVault now uses Tauri/Rust for encrypted KDBX storage. The browser preview does not handle credentials or create plaintext fallbacks.</p>
+      <small>Run the desktop app with the Tauri development command.</small>
+    </div></div></div>;
+  }
+
+  if (!summary || summary.locked) {
     return <div className={'app ' + (dark ? 'dark' : '')}>
-      <div className="lockedScreen"><div className="lockedCard">
-        <div className="brandMark"><Shield /></div><span className="eyebrow">PALMI-D3V / LOCKED</span>
-        <h1>Vault locked</h1>
-        <p>The active in-memory session has been cleared. Reopening the encrypted vault requires the native Tauri/Rust vault layer.</p>
-        <button className="primary" onClick={() => setLocked(false)}><Unlock /> Return to shell</button>
-        <small>Development shell only — no credentials are persisted by this UI.</small>
+      <div className="lockedScreen"><div className="lockedCard vaultGate">
+        <div className="brandMark"><Shield /></div><span className="eyebrow">PALMI-D3V / ENCRYPTED VAULT</span>
+        <h1>{summary?.path ? 'Vault locked' : 'Open your vault'}</h1>
+        <p>{summary?.path ? 'Unlock the existing encrypted KDBX vault to continue.' : 'Create a new encrypted KDBX vault or open an existing KeePass database.'}</p>
+        <div className="gateActions">
+          <button className="primary" onClick={() => startVaultAction('create')}><Plus /> Create vault</button>
+          <button onClick={() => startVaultAction('open')}><Unlock /> Open vault</button>
+          <button onClick={() => startVaultAction('import')}><FileUp /> Import KDBX</button>
+          {summary?.path && <button onClick={() => startVaultAction('keychain')}><KeyRound /> Unlock with keychain</button>}
+        </div>
+        <small>Secrets are not stored in localStorage, IndexedDB, or the browser cache.</small>
       </div></div>
+      {modal === 'master' && <MasterModal action={vaultAction} value={masterPassword} setValue={setMasterPassword} onSubmit={submitMasterPassword} onClose={() => { setModal(null); setVaultAction(null); }} error={error} />}
+      {toast && <div className="toast"><Check /> {toast}</div>}
     </div>;
   }
 
@@ -140,23 +248,24 @@ function App() {
             <option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option>
           </select>
         </div>
-        <button onClick={lockVault}><Lock /> Lock session</button>
+        <button onClick={lockVault}><Lock /> Lock vault</button>
       </div>
     </aside>
 
     <main>
       <header>
         <button className="mobileMenu" onClick={() => setMobileNav((value) => !value)} aria-label="Open navigation"><ChevronDown /></button>
-        <div><div className="eyebrow">PALMI-D3V / SECURITY</div><h1>{page}</h1></div>
+        <div><div className="eyebrow">PALMI-D3V / ENCRYPTED KDBX</div><h1>{page}</h1></div>
         <div className="headerActions">
           <div className="search"><Search /><input aria-label="Search credentials" placeholder="Search credentials..." value={query} onChange={(event) => setQuery(event.target.value)} /></div>
           <button className="primary" onClick={openNew}><Plus /> New credential</button>
         </div>
       </header>
 
-      <div className="securityBanner"><AlertTriangle /><div><strong>Development vault — not production safe.</strong>
-        <span>Credentials exist only in the current React session. Encryption, persistence and native unlock are intentionally not simulated.</span>
+      <div className="securityBanner"><Shield /><div><strong>Encrypted native vault active.</strong>
+        <span>Credentials are persisted in the KDBX vault. Master password stays in native memory and is zeroized on lock.</span>
       </div></div>
+      {error && <div className="errorBanner"><AlertTriangle /><span>{error}</span><button onClick={() => setError('')}><X /></button></div>}
 
       {page === 'Dashboard' && <>
         <section className="cards">
@@ -171,9 +280,9 @@ function App() {
           </Panel>
           <Panel title="Security posture"><div className="posture">
             <div><span>2FA coverage</span><b>{credentials.length ? Math.round(credentials.filter((item) => item.twofa).length / credentials.length * 100) : 0}%</b></div>
-            <div><span>Session storage</span><b>Memory only</b></div>
-            <div><span>Encryption</span><b className="warningText">Pending native vault</b></div>
-            <div><span>Lock action</span><b className="good">Available</b></div>
+            <div><span>Storage</span><b>KDBX encrypted</b></div>
+            <div><span>Auto-lock</span><b>{summary.autoLockMinutes} min</b></div>
+            <div><span>OS keychain</span><b className={summary.keychainAvailable ? 'good' : 'warningText'}>{summary.keychainAvailable ? 'Available' : 'Unavailable'}</b></div>
           </div></Panel>
         </div>
       </>}
@@ -194,40 +303,42 @@ function App() {
 
       {page === 'Security' && <div className="grid">
         <Panel title="Security status"><div className="audit">
-          <Audit ok text="Secrets stay in React memory during this UI session." />
-          <Audit ok text="Theme preference is the only persisted browser setting." />
-          <Audit ok text="Password generation uses the Web Crypto API." />
-          <Audit ok={false} text="Encrypted native vault is not implemented yet." />
-          <Audit ok={false} text="Master-password authentication is not implemented yet." />
-          <Audit ok={false} text="Auto-lock and secure memory cleanup require native integration." />
+          <Audit ok text="KDBX encryption is handled by the KeePass Rust library." />
+          <Audit ok text="Master password is held by the native vault session and zeroized on lock." />
+          <Audit ok text="Auto-lock runs from the Rust process." />
+          <Audit ok text="OS keychain integration is available when the platform store is supported." />
+          <Audit ok text="Browser persistence is limited to the non-sensitive theme preference." />
+          <Audit ok={false} text="Clipboard clearing is platform-dependent; PasswordVault does not claim it can erase the OS clipboard." />
         </div></Panel>
-        <Panel title="Recommended before production"><ul className="recommendations">
-          <li>Use an established encrypted vault format/library.</li><li>Keep decrypted data outside browser persistence.</li>
-          <li>Implement native auto-lock and session timeout.</li><li>Minimize clipboard exposure and clear it where the platform permits.</li>
-          <li>Validate imports before exposing decrypted records to the UI.</li>
-        </ul></Panel>
+        <Panel title="Session controls"><div className="sessionControls">
+          <label>Auto-lock timeout<select value={summary.autoLockMinutes} onChange={(e) => runNative(() => nativeVault.setAutoLock(Number(e.target.value)), 'Auto-lock updated.')}>
+            {[5, 10, 15, 30, 60, 120].map((minutes) => <option key={minutes} value={minutes}>{minutes} minutes</option>)}
+          </select></label>
+          <button onClick={async () => { await runNative(() => nativeVault.keychainStore(), 'Master password stored in the OS keychain.'); await refresh(); }}><KeyRound /> Remember in OS keychain</button>
+          <button onClick={async () => { await runNative(() => nativeVault.keychainClear(), 'OS keychain entry cleared.'); }}><Trash2 /> Clear OS keychain entry</button>
+        </div></Panel>
       </div>}
 
       {page === 'Backup' && <Panel title="Vault lifecycle"><div className="lifecycle">
-        <Lifecycle icon={<FileUp />} title="Import encrypted vault" text="Blocked until native vault support is available." disabled />
-        <Lifecycle icon={<FileDown />} title="Export encrypted vault" text="Blocked until native vault support is available." disabled />
-        <Lifecycle icon={<Lock />} title="Lock & clear session" text="Available now; clears all in-memory credentials." onClick={lockVault} />
+        <Lifecycle icon={<FileUp />} title="Import encrypted KDBX" text="Open another KDBX and make it the active vault." onClick={() => startVaultAction('import')} />
+        <Lifecycle icon={<FileDown />} title="Export encrypted KDBX" text="Write the active encrypted vault to another .kdbx file." onClick={async () => {
+          const path = await chooseVaultFile('save'); if (path && !Array.isArray(path)) await runNative(() => nativeVault.export(path), 'Encrypted vault exported.');
+        }} />
+        <Lifecycle icon={<Lock />} title="Lock vault" text="Zeroize native session secrets and return to the unlock screen." onClick={lockVault} />
       </div></Panel>}
+
+      {modal === 'edit' && <CredentialEditor form={form} setForm={setForm} visible={formPasswordVisible} setVisible={setFormPasswordVisible} onClose={() => setModal(null)} onSave={saveCredential} onGenerate={generatePassword} editing={Boolean(selected)} />}
+      {modal === 'view' && selected && <CredentialViewer credential={selected} onClose={() => setModal(null)} onEdit={() => openEdit(selected)} onDelete={() => removeCredential(selected)} onCopy={copyValue} />}
     </main>
 
-    {modal === 'edit' && <CredentialEditor form={form} setForm={setForm} visible={formPasswordVisible} setVisible={setFormPasswordVisible} onClose={() => setModal(null)} onSave={saveCredential} onGenerate={generatePassword} editing={Boolean(selected)} />}
-    {modal === 'view' && selected && <CredentialViewer credential={selected} onClose={() => setModal(null)} onEdit={() => openEdit(selected)} onDelete={() => removeCredential(selected)} onCopy={copyValue} />}
     {toast && <div className="toast"><Check /> {toast}</div>}
   </div>;
 }
 
 function Metric({ value, label }: { value: number; label: string }) { return <div className="card"><span>{label}</span><strong>{value}</strong></div>; }
-function Panel({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) {
-  return <section className="panel"><div className="panelHead"><h2>{title}</h2>{action}</div>{children}</section>;
-}
-function Empty({ onAdd }: { onAdd: () => void }) {
-  return <div className="empty"><KeyRound /><h3>No credentials yet</h3><p>Add a credential to explore the vault workflow.</p><button className="primary" onClick={onAdd}><Plus /> Add credential</button></div>;
-}
+function Panel({ title, action, children }: { title: string; action?: ReactNode; children: ReactNode }) { return <section className="panel"><div className="panelHead"><h2>{title}</h2>{action}</div>{children}</section>; }
+function Empty({ onAdd }: { onAdd: () => void }) { return <div className="empty"><KeyRound /><h3>No credentials yet</h3><p>Add a credential to explore the encrypted vault workflow.</p><button className="primary" onClick={onAdd}><Plus /> Add credential</button></div>; }
+
 function CredentialTable({ rows, onView, onEdit, onDelete, onCopy }: {
   rows: Credential[]; onView: (item: Credential) => void; onEdit: (item: Credential) => void;
   onDelete: (item: Credential) => void; onCopy: (value: string, label: string) => void;
@@ -241,6 +352,7 @@ function CredentialTable({ rows, onView, onEdit, onDelete, onCopy }: {
         <button title="Edit" onClick={() => onEdit(item)}><Pencil /></button><button title="Delete" onClick={() => onDelete(item)}><Trash2 /></button></div></td>
     </tr>)}</tbody></table></div>;
 }
+
 function CredentialEditor({ form, setForm, visible, setVisible, onClose, onSave, onGenerate, editing }: {
   form: typeof emptyForm; setForm: Dispatch<SetStateAction<typeof emptyForm>>; visible: boolean;
   setVisible: (value: boolean) => void; onClose: () => void; onSave: () => void; onGenerate: () => void; editing: boolean;
@@ -263,6 +375,7 @@ function CredentialEditor({ form, setForm, visible, setVisible, onClose, onSave,
       <button className="primary" onClick={onSave}>{editing ? 'Save changes' : 'Add credential'}</button></div>
   </Modal>;
 }
+
 function CredentialViewer({ credential, onClose, onEdit, onDelete, onCopy }: {
   credential: Credential; onClose: () => void; onEdit: () => void; onDelete: () => void; onCopy: (value: string, label: string) => void;
 }) {
@@ -275,20 +388,32 @@ function CredentialViewer({ credential, onClose, onEdit, onDelete, onCopy }: {
     {credential.notes && <div className="detail full"><span>Notes</span><p>{credential.notes}</p></div>}
   </div><div className="dialogActions"><button onClick={onDelete}><Trash2 /> Delete</button><span className="spacer" /><button onClick={onClose}>Close</button><button className="primary" onClick={onEdit}><Pencil /> Edit</button></div></Modal>;
 }
-function Detail({ label, value, action }: { label: string; value: string; action?: ReactNode }) {
-  return <div className="detail"><span>{label}</span><div><b>{value}</b>{action}</div></div>;
+
+function MasterModal({ action, value, setValue, onSubmit, onClose, error }: {
+  action: VaultAction; value: string; setValue: (value: string) => void; onSubmit: () => void; onClose: () => void; error: string;
+}) {
+  const create = action === 'create';
+  const keychain = action === 'keychain';
+  return <Modal title={create ? 'Create encrypted vault' : keychain ? 'Unlock with OS keychain' : 'Unlock encrypted vault'} onClose={onClose}>
+    <div className="form single">
+      {!keychain && <Field label={create ? 'New master password · minimum 12 characters' : 'Master password'}><input autoFocus type="password" value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && onSubmit()} /></Field>}
+      <div className="nativeHint"><Shield /><span>{keychain ? 'The password will be retrieved from the native OS credential store.' : 'The password is passed to the native vault only for unlock/create and is not persisted by the React UI.'}</span></div>
+      {error && <div className="errorBanner"><AlertTriangle /><span>{error}</span></div>}
+    </div>
+    <div className="dialogActions"><span className="spacer" /><button onClick={onClose}>Cancel</button><button className="primary" onClick={onSubmit}>{create ? 'Create & encrypt' : 'Unlock'}</button></div>
+  </Modal>;
 }
+
+function Detail({ label, value, action }: { label: string; value: string; action?: ReactNode }) { return <div className="detail"><span>{label}</span><div><b>{value}</b>{action}</div></div>; }
 function Field({ label, children }: { label: string; children: ReactNode }) { return <label className="field">{label}{children}</label>; }
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
   return <div className="modal" role="dialog" aria-modal="true" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
     <div className="dialog"><div className="dialogHead"><h2>{title}</h2><button onClick={onClose} aria-label="Close"><X /></button></div>{children}</div>
   </div>;
 }
-function Audit({ ok, text }: { ok: boolean; text: string }) {
-  return <div className={ok ? 'auditItem ok' : 'auditItem warning'}>{ok ? <Check /> : <AlertTriangle />}<span>{text}</span></div>;
-}
-function Lifecycle({ icon, title, text, disabled, onClick }: { icon: ReactNode; title: string; text: string; disabled?: boolean; onClick?: () => void }) {
-  return <button className={'lifecycleCard ' + (disabled ? 'disabled' : '')} disabled={disabled} onClick={onClick}><span>{icon}</span><strong>{title}</strong><small>{text}</small></button>;
+function Audit({ ok, text }: { ok: boolean; text: string }) { return <div className={ok ? 'auditItem ok' : 'auditItem warning'}>{ok ? <Check /> : <AlertTriangle />}<span>{text}</span></div>; }
+function Lifecycle({ icon, title, text, onClick }: { icon: ReactNode; title: string; text: string; onClick?: () => void }) {
+  return <button className="lifecycleCard" onClick={onClick}><span>{icon}</span><strong>{title}</strong><small>{text}</small></button>;
 }
 function passwordStrength(password: string) {
   let score = 0;
@@ -297,7 +422,6 @@ function passwordStrength(password: string) {
   const level = score <= 2 ? 'weak' : score <= 4 ? 'medium' : 'strong';
   return { level, label: password ? level[0].toUpperCase() + level.slice(1) : 'No password', percent: Math.min(100, score / 6 * 100) };
 }
-export default App;
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
