@@ -1,7 +1,6 @@
 import { StrictMode, useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
-import { open, save } from '@tauri-apps/plugin-dialog';
 import {
   AlertTriangle, Check, ChevronDown, Copy, Eye, EyeOff, FileDown, FileUp,
   KeyRound, LayoutDashboard, Lock, Pencil, Plus, Search, Shield, Sun,
@@ -98,10 +97,7 @@ function App() {
       setError('Native file dialogs are available when running the Tauri desktop app.');
       return null;
     }
-    if (kind === 'open') {
-      return await open({ multiple: false, directory: false, filters: [{ name: 'KeePass database', extensions: ['kdbx'] }] });
-    }
-    return await save({ filters: [{ name: 'KeePass database', extensions: ['kdbx'] }], defaultPath: 'Palmi PasswordVault.kdbx' });
+    return kind === 'open' ? await nativeVault.pickOpenPath() : await nativeVault.pickSavePath();
   };
 
   const startVaultAction = (action: VaultAction) => {
