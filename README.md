@@ -1,58 +1,84 @@
 # 🔐 Palmi PasswordVault
 
-A desktop password-manager foundation for Palmi D3v, designed around a local UI, credential organization, password generation, vault lifecycle, and a future encrypted native vault boundary.
+Desktop password-manager foundation for Palmi D3v, with a polished local UI and an explicit native security boundary.
 
-## ✨ Current UI foundation
+## ✨ Completed UI shell
 
-- 📊 Dashboard
-- 🔑 Credentials
-- 🗂️ Categories
-- 🛡️ Security view
-- 💾 Backup lifecycle UI
-- 🔄 Password generator
-- 🔎 Credential search
-- 🌙 Dark/light mode
-- 📱 Responsive interface
+- 📊 Dashboard and security posture
+- 🔑 Credential create, view, edit and delete
+- 🔎 Search plus category and importance filters
+- 🔄 Web Crypto password generator
+- 💪 Password-strength feedback
+- 📋 Username/password clipboard actions
+- 👁️ Password visibility controls
+- 🌙 Light / dark / system theme with persisted preference
+- 📱 Responsive navigation and mobile layout
+- 🔒 Session lock that clears in-memory credentials
+- ⚠️ Honest security states and production warnings
 
 ## ⚠️ Security boundary
 
-The current release is an architecture/UI foundation. **Do not use it to store production credentials yet.** The native encrypted `.kdbx` vault layer remains the required security milestone before treating the application as a real password manager.
+**Do not use the current application to store production credentials.**
+
+The React UI deliberately keeps credentials in memory only. It does not pretend that this state is encrypted or persistent. The remaining production milestone is the native Tauri/Rust encrypted vault lifecycle.
+
+Required before production:
+
+- Encrypted vault persistence
+- Master-password authentication
+- KeePass-compatible .kdbx import/export
+- Native auto-lock and secure session timeout
+- Native secure file dialogs
+- OS keychain integration where appropriate
+- Security-focused integration tests
+- Secure session/memory handling
 
 ## 🧱 Stack
 
 - React
 - TypeScript
 - Vite
-- Tailwind CSS
+- Tailwind CSS dependency / future design-system integration
 - Lucide React
 - Tauri 2
 - Rust
 
 ## 🏗️ Repository structure
 
-```text
 passwordvault/
-├── app/       # Current desktop application + security documentation
-└── archive/   # Historical material
-```
-
-The frontend is under `app/src/`; the native Tauri layer is under `app/src-tauri/`.
+├── app/
+│   ├── src/              # React application
+│   ├── src-tauri/        # Native Tauri/Rust boundary
+│   ├── docs/             # Architecture, security and finalization notes
+│   ├── vite.config.ts
+│   └── package.json
+├── .github/workflows/    # Production build validation
+└── archive/              # Historical material
 
 ## 📚 Documentation
 
-Current security and architecture notes live under `app/docs/`.
+- app/docs/ARCHITECTURE.md — target architecture and vault lifecycle
+- app/docs/SECURITY.md — security rules and native work
+- app/docs/FINALIZATION.md — completed work and production gate
 
 ## ▶️ Development
 
-```bash
-cd app
-npm install
-npm run dev
-npm run tauri dev
-```
+    cd app
+    npm install
+    npm run dev
+    npm run tauri dev
 
-Tauri development also requires the Rust toolchain and Windows prerequisites.
+Tauri development requires the Rust toolchain and Windows prerequisites.
 
-## 📌 Project status
+## 🧪 Build validation
 
-The project is intentionally not production-ready as a credential vault. The next major milestone is implementing and validating the encrypted native vault lifecycle, import/export boundary, session locking, and secure memory handling.
+The repository includes a GitHub Actions build check that runs:
+
+    npm ci
+    npm run build
+
+## 📌 Status
+
+**UI shell: finalized for the current architecture.**
+
+**Production password vault: not yet complete.** The next implementation must happen inside the native Tauri/Rust security boundary rather than by adding browser persistence to the React layer.
