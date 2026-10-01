@@ -28,24 +28,20 @@ export type KeychainStatus = {
 
 export const nativeVault = {
   status: () => invoke<VaultSummary>('vault_status'),
-  create: (path: string, masterPassword: string) =>
-    invoke<VaultSummary>('vault_create', { path, masterPassword }),
-  open: (path: string, masterPassword: string) =>
-    invoke<VaultSummary>('vault_open', { path, masterPassword }),
-  openWithKeychain: (path: string) =>
-    invoke<VaultSummary>('vault_open_with_keychain', { path }),
+  create: (path: string, masterPassword: string) => invoke<VaultSummary>('vault_create', { path, masterPassword }),
+  open: (path: string, masterPassword: string) => invoke<VaultSummary>('vault_open', { path, masterPassword }),
+  openWithKeychain: (path: string) => invoke<VaultSummary>('vault_open_with_keychain', { path }),
   save: () => invoke<VaultSummary>('vault_save'),
   export: (path: string) => invoke<VaultSummary>('vault_export', { path }),
-  import: (path: string, masterPassword: string) =>
-    invoke<VaultSummary>('vault_import', { path, masterPassword }),
+  import: (path: string, masterPassword: string) => invoke<VaultSummary>('vault_import', { path, masterPassword }),
   credentials: () => invoke<Credential[]>('vault_credentials'),
-  upsert: (credential: Credential) =>
-    invoke<VaultSummary>('vault_upsert', { credential }),
+  upsert: (credential: Credential) => invoke<VaultSummary>('vault_upsert', { credential }),
   delete: (id: string) => invoke<VaultSummary>('vault_delete', { id }),
   lock: () => invoke<void>('vault_lock'),
-  setAutoLock: (minutes: number) =>
-    invoke<VaultSummary>('vault_set_auto_lock', { minutes }),
+  setAutoLock: (minutes: number) => invoke<VaultSummary>('vault_set_auto_lock', { minutes }),
   keychainStatus: () => invoke<KeychainStatus>('keychain_status'),
   keychainStore: () => invoke<void>('keychain_store'),
   keychainClear: () => invoke<void>('keychain_clear'),
+  pickOpenPath: () => invoke<string | null>('pick_open_kdbx'),
+  pickSavePath: () => invoke<string | null>('pick_save_kdbx'),
 };
