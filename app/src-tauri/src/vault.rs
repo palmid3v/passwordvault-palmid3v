@@ -134,7 +134,7 @@ impl VaultSession {
             .map_err(|error| VaultError::KeePass(error.to_string()))?;
 
         let credentials = database
-            .root
+            .root()
             .all_entries()
             .map(entry_to_record)
             .collect::<Result<Vec<_>, _>>()?;
@@ -344,7 +344,7 @@ fn write_kdbx(
         fs::create_dir_all(parent)?;
     }
 
-    let mut database = Database::new(Default::default());
+    let mut database = Database::new();
     database.meta.database_name = Some("Palmi PasswordVault".to_string());
 
     {
