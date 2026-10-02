@@ -217,16 +217,52 @@ fn merge_import_notes(existing: &str, provenance: &str) -> String {
         return provenance.to_string();
     }
 
-    if let Some((_, remainder)) = existing.split_once('
-') {
-        return format!("{provenance}\n{remainder}");
-    }
+    if let Some(remainder) = existing.strip_prefix("Imported from Excel ·") {
+        let remainder = remainder.trim_start();
+        if remainder.is_empty() {
+            return provenance.to_string();
+        }
 
-    if existing.starts_with("Imported from Excel ·") {
+        if let Some((_, manual_notes)) = remainder.split_once('\\n') {
+            return format!("{provenance}\\n{}", manual_notes.trim_start());
+        }
+
         return provenance.to_string();
     }
 
-    format!("{provenance}\n{existing}")
+    format!("{provenance}\\n{existing}")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::merge_import_notes;
+
+    #[test]
+    fn provenance_replaces_previous_excel_provenance() {
+        assert_eq!(
+            merge_import_notes("Imported from Excel · 2026-05-20", "Imported from Excel · 2026-10-02"),
+            "Imported from Excel · 2026-10-02"
+        );
+    }
+
+    #[test]
+    fn provenance_preserves_manual_notes() {
+        assert_eq!(
+            merge_import_notes(
+                "Imported from Excel · 2026-05-20\\nKeep this note",
+                "Imported from Excel · 2026-10-02"
+            ),
+            "Imported from Excel · 2026-10-02\\nKeep this note"
+        );
+    }
+
+    #[test]
+    fn provenance_is_added_to_existing_manual_notes() {
+        assert_eq!(
+            merge_import_notes("Important account note", "Imported from Excel · 2026-10-02"),
+            "Imported from Excel · 2026-10-02\\nImportant account note"
+        );
+    }
 }
 
 fn same_identity(left: &CredentialRecord, right: &CredentialRecord) -> bool {
