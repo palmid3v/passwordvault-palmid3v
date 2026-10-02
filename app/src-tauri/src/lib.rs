@@ -46,7 +46,7 @@ async fn pick_save_kdbx(app: tauri::AppHandle) -> Result<Option<String>, String>
 
 #[tauri::command]
 fn vault_status(state: State<'_, SharedVault>) -> Result<VaultSummary, String> {
-    shared(&state)?.summary().map_err(VaultError::to_string)
+    shared(&state)?.summary().map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -56,7 +56,7 @@ fn vault_create(
     master_password: String,
 ) -> Result<VaultSummary, String> {
     let mut vault = shared(&state)?;
-    vault.create(&path, &master_password).map_err(VaultError::to_string)
+    vault.create(&path, &master_password).map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -66,7 +66,7 @@ fn vault_open(
     master_password: String,
 ) -> Result<VaultSummary, String> {
     let mut vault = shared(&state)?;
-    vault.open(&path, &master_password).map_err(VaultError::to_string)
+    vault.open(&path, &master_password).map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -75,13 +75,13 @@ fn vault_open_with_keychain(
     path: String,
 ) -> Result<VaultSummary, String> {
     let mut vault = shared(&state)?;
-    vault.open_with_keychain(&path).map_err(VaultError::to_string)
+    vault.open_with_keychain(&path).map_err(|error| error.to_string())
 }
 
 #[tauri::command]
 fn vault_save(state: State<'_, SharedVault>) -> Result<VaultSummary, String> {
     let mut vault = shared(&state)?;
-    vault.save().map_err(VaultError::to_string)
+    vault.save().map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -90,7 +90,7 @@ fn vault_export(
     path: String,
 ) -> Result<VaultSummary, String> {
     let vault = shared(&state)?;
-    vault.export(&path).map_err(VaultError::to_string)
+    vault.export(&path).map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -100,14 +100,14 @@ fn vault_import(
     master_password: String,
 ) -> Result<VaultSummary, String> {
     let mut vault = shared(&state)?;
-    vault.open(&path, &master_password).map_err(VaultError::to_string)
+    vault.open(&path, &master_password).map_err(|error| error.to_string())
 }
 
 #[tauri::command]
 fn vault_credentials(state: State<'_, SharedVault>) -> Result<Vec<CredentialRecord>, String> {
     let mut vault = shared(&state)?;
-    vault.touch().map_err(VaultError::to_string)?;
-    vault.credentials().map_err(VaultError::to_string)
+    vault.touch().map_err(|error| error.to_string())?;
+    vault.credentials().map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -116,7 +116,7 @@ fn vault_upsert(
     credential: CredentialRecord,
 ) -> Result<VaultSummary, String> {
     let mut vault = shared(&state)?;
-    vault.upsert(credential).map_err(VaultError::to_string)
+    vault.upsert(credential).map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -125,13 +125,13 @@ fn vault_delete(
     id: String,
 ) -> Result<VaultSummary, String> {
     let mut vault = shared(&state)?;
-    vault.delete(&id).map_err(VaultError::to_string)
+    vault.delete(&id).map_err(|error| error.to_string())
 }
 
 #[tauri::command]
 fn vault_lock(state: State<'_, SharedVault>) -> Result<(), String> {
     let mut vault = shared(&state)?;
-    vault.lock().map_err(VaultError::to_string)
+    vault.lock().map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -140,7 +140,7 @@ fn vault_set_auto_lock(
     minutes: u64,
 ) -> Result<VaultSummary, String> {
     let mut vault = shared(&state)?;
-    vault.set_auto_lock(minutes).map_err(VaultError::to_string)
+    vault.set_auto_lock(minutes).map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -151,7 +151,7 @@ fn keychain_status() -> Result<KeychainStatus, String> {
 #[tauri::command]
 fn keychain_store(state: State<'_, SharedVault>) -> Result<(), String> {
     let vault = shared(&state)?;
-    vault.store_keychain().map_err(VaultError::to_string)
+    vault.store_keychain().map_err(|error| error.to_string())
 }
 
 #[tauri::command]
