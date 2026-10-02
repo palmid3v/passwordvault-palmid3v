@@ -184,6 +184,12 @@ impl VaultSession {
                 if !incoming.email.is_empty() {
                     merged.email = incoming.email.clone();
                 }
+                if !incoming.status.is_empty() {
+                    merged.status = incoming.status.clone();
+                }
+                if !incoming.phone.is_empty() {
+                    merged.phone = incoming.phone.clone();
+                }
                 if !incoming.url.is_empty() {
                     merged.url = incoming.url.clone();
                 }
@@ -581,6 +587,8 @@ mod tests {
             category: "Development".into(),
             username: "palmi".into(),
             email: "palmi@example.com".into(),
+            status: "Active".into(),
+            phone: String::new(),
             url: "https://github.com".into(),
             password: "correct horse battery staple".into(),
             notes: "integration-test".into(),
