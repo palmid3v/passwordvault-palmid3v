@@ -18,7 +18,7 @@ type VaultAction = 'create' | 'open' | 'import' | 'keychain' | null;
 const isTauri = '__TAURI_INTERNALS__' in window;
 const categories = ['Development', 'Finance', 'Email', 'Social', 'Work', 'Gaming', 'Shopping', 'Cloud', 'Government', 'Other'];
 const emptyForm = {
-  service: '', category: 'Development', username: '', email: '', url: '', password: '',
+  service: '', category: 'Development', username: '', email: '', status: 'Active', phone: '', url: '', password: '',
   notes: '', twofa: false, importance: 'Normal' as Importance
 };
 
@@ -62,7 +62,7 @@ function App() {
   }, [toast]);
 
   const filtered = useMemo(() => credentials.filter((credential) => {
-    const haystack = [credential.service, credential.username, credential.category, credential.url, credential.notes].join(' ').toLowerCase();
+    const haystack = [credential.service, credential.username, credential.email, credential.status, credential.phone, credential.category, credential.url, credential.notes].join(' ').toLowerCase();
     return haystack.includes(query.toLowerCase())
       && (category === 'All' || credential.category === category)
       && (importance === 'All' || credential.importance === importance);
@@ -165,9 +165,17 @@ function App() {
   const openEdit = (credential: Credential) => {
     setSelected(credential);
     setForm({
-      service: credential.service, category: credential.category, username: credential.username,
-      url: credential.url, password: credential.password, notes: credential.notes,
-      twofa: credential.twofa, importance: credential.importance
+      service: credential.service,
+      category: credential.category,
+      username: credential.username,
+      email: credential.email,
+      status: credential.status || 'Active',
+      phone: credential.phone,
+      url: credential.url,
+      password: credential.password,
+      notes: credential.notes,
+      twofa: credential.twofa,
+      importance: credential.importance
     });
     setFormPasswordVisible(false);
     setModal('edit');
@@ -400,11 +408,13 @@ function CredentialEditor({ form, setForm, visible, setVisible, onClose, onSave,
       <Field label="Service *"><input autoFocus value={form.service} onChange={(e) => setForm({ ...form, service: e.target.value })} placeholder="GitHub" /></Field>
       <Field label="Username"><input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="palmi" /></Field>
       <Field label="Email"><input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="you@example.com" /></Field>
+      <Field label="Phone"><input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="301..." /></Field>
+      <Field label="Status"><input value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} placeholder="Active" /></Field>
+      <Field label="Category"><select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>{categories.map((item) => <option key={item}>{item}</option>)}</select></Field>
       <Field full label="URL"><input value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} placeholder="https://..." /></Field>
       <Field full label="Password"><div className="passwordInput"><input type={visible ? 'text' : 'password'} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
         <button type="button" onClick={() => setVisible(!visible)} aria-label={visible ? 'Hide password' : 'Show password'}>{visible ? <EyeOff /> : <Eye />}</button></div>
         <div className="strength"><span className={strength.level}>{strength.label}</span><i><b style={{ width: strength.percent + '%' }} /></i></div></Field>
-      <Field label="Category"><select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>{categories.map((item) => <option key={item}>{item}</option>)}</select></Field>
       <Field label="Importance"><select value={form.importance} onChange={(e) => setForm({ ...form, importance: e.target.value as Importance })}><option>Normal</option><option>High</option><option>Critical</option></select></Field>
       <Field full label="Notes"><textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Optional notes" /></Field>
       <label className="check"><input type="checkbox" checked={form.twofa} onChange={(e) => setForm({ ...form, twofa: e.target.checked })} /> 2FA enabled</label>
@@ -421,6 +431,8 @@ function CredentialViewer({ credential, onClose, onEdit, onDelete, onCopy }: {
   return <Modal title={credential.service} onClose={onClose}><div className="detailGrid">
     <Detail label="Username" value={credential.username || '—'} action={credential.username ? <button onClick={() => onCopy(credential.username, 'Username')}><Copy /></button> : undefined} />
     <Detail label="Email" value={credential.email || '—'} action={credential.email ? <button onClick={() => onCopy(credential.email, 'Email')}><Copy /></button> : undefined} />
+    <Detail label="Status" value={credential.status || '—'} />
+    <Detail label="Phone" value={credential.phone || '—'} action={credential.phone ? <button onClick={() => onCopy(credential.phone, 'Phone')}><Copy /></button> : undefined} />
     <Detail label="Password" value={show ? credential.password : '••••••••••••'} action={<><button onClick={() => setShow(!show)}>{show ? <EyeOff /> : <Eye />}</button><button onClick={() => onCopy(credential.password, 'Password')}><Copy /></button></>} />
     <Detail label="URL" value={credential.url || '—'} /><Detail label="Category" value={credential.category} />
     <Detail label="Importance" value={credential.importance} /><Detail label="2FA" value={credential.twofa ? 'Enabled' : 'Not enabled'} />
