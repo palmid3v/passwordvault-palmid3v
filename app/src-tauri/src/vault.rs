@@ -585,6 +585,70 @@ mod tests {
     }
 
     #[test]
+    fn merge_identity_prefers_email() {
+        let left = CredentialRecord {
+            id: "1".into(),
+            service: "Tumblr".into(),
+            category: "Other".into(),
+            username: "old-user".into(),
+            email: "same@example.com".into(),
+            url: String::new(),
+            password: "old".into(),
+            notes: String::new(),
+            twofa: false,
+            importance: "Normal".into(),
+            updated: "1".into(),
+        };
+        let right = CredentialRecord {
+            id: "2".into(),
+            service: "tumblr".into(),
+            category: "Other".into(),
+            username: "new-user".into(),
+            email: "SAME@example.com".into(),
+            url: String::new(),
+            password: "new".into(),
+            notes: String::new(),
+            twofa: false,
+            importance: "Normal".into(),
+            updated: "2".into(),
+        };
+
+        assert!(credential_identity_matches(&left, &right));
+    }
+
+    #[test]
+    fn merge_identity_creates_new_account_for_different_email() {
+        let left = CredentialRecord {
+            id: "1".into(),
+            service: "Tumblr".into(),
+            category: "Other".into(),
+            username: "user".into(),
+            email: "one@example.com".into(),
+            url: String::new(),
+            password: "old".into(),
+            notes: String::new(),
+            twofa: false,
+            importance: "Normal".into(),
+            updated: "1".into(),
+        };
+        let right = CredentialRecord {
+            id: "2".into(),
+            service: "Tumblr".into(),
+            category: "Other".into(),
+            username: "user".into(),
+            email: "two@example.com".into(),
+            url: String::new(),
+            password: "new".into(),
+            notes: String::new(),
+            twofa: false,
+            importance: "Normal".into(),
+            updated: "2".into(),
+        };
+
+        assert!(!credential_identity_matches(&left, &right));
+    }
+
+    #[test]
     fn creates_encrypted_kdbx_and_reopens_with_correct_password() {
         let path = temp_path("create-open");
         let mut vault = VaultSession::new();
