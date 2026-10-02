@@ -1,5 +1,6 @@
 use calamine::{open_workbook, Data, Reader, Xlsx};
 use std::path::Path;
+use zeroize::Zeroize;
 
 use crate::vault::{CredentialRecord, VaultError};
 
@@ -89,6 +90,27 @@ pub fn import_records(
 
         if let Some(existing) = target.iter_mut().find(|existing| same_identity(existing, &record)) {
             record.id = existing.id.clone();
+
+            if record.password.is_empty() {
+                record.password = existing.password.clone();
+            }
+            if record.url.is_empty() {
+                record.url = existing.url.clone();
+            }
+            if record.category == "Other" {
+                record.category = existing.category.clone();
+            }
+            if record.importance == "Normal" {
+                record.importance = existing.importance.clone();
+            }
+            if !record.twofa {
+                record.twofa = existing.twofa;
+            }
+            if record.notes.is_empty() {
+                record.notes = existing.notes.clone();
+            }
+
+            existing.zeroize();
             *existing = record;
         } else {
             record.id = uuid::Uuid::new_v4().to_string();
