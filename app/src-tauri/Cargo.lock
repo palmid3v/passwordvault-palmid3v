@@ -2661,7 +2661,6 @@ name = "palmi_passwordvault"
 version = "1.0.0"
 dependencies = [
  "keepass",
- "keepass",
  "keyring",
  "serde",
  "serde_json",
