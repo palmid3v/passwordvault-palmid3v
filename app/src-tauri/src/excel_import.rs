@@ -1,5 +1,7 @@
 use calamine::{open_workbook, Data, Reader, Xlsx};
-use std::path::Path;
+use std::{fs::File, io::{Read}, path::Path};
+
+use zip::ZipArchive;
 use zeroize::Zeroize;
 
 use crate::vault::{CredentialRecord, VaultError};
@@ -45,6 +47,7 @@ pub fn import_records(
     let password_index = find_header(&headers, &["password", "pass"]);
     let status_index = find_header(&headers, &["status"]);
     let phone_index = find_header(&headers, &["phonenumberassociated", "phone", "phonenumber"]);
+    let imported_note = format!("Imported from Excel · {}", excel_modified_date(path)?);
 
     let mut imported = 0usize;
 
@@ -65,10 +68,12 @@ pub fn import_records(
             .unwrap_or_default();
 
         let password = normalize_password(&password);
-        let notes = imported_metadata(
-            status_index.map(|index| cell_at(row, index)),
-            phone_index.map(|index| cell_at(row, index)),
-        );
+        let status = status_index
+            .map(|index| cell_at(row, index))
+            .unwrap_or_default();
+        let phone = phone_index
+            .map(|index| cell_at(row, index))
+            .unwrap_or_default();
 
         let mut record = CredentialRecord {
             id: String::new(),
@@ -76,9 +81,11 @@ pub fn import_records(
             category: "Other".into(),
             username: username.trim().to_string(),
             email: email.trim().to_string(),
+            status: status.trim().to_string(),
+            phone: phone.trim().to_string(),
             url: String::new(),
             password,
-            notes,
+            notes: imported_note.clone(),
             twofa: false,
             importance: "Normal".into(),
             updated: chrono_now(),
@@ -106,9 +113,13 @@ pub fn import_records(
             if !record.twofa {
                 record.twofa = existing.twofa;
             }
-            if record.notes.is_empty() {
-                record.notes = existing.notes.clone();
+            if record.status.is_empty() {
+                record.status = existing.status.clone();
             }
+            if record.phone.is_empty() {
+                record.phone = existing.phone.clone();
+            }
+            record.notes = merge_import_notes(&existing.notes, &imported_note);
 
             existing.zeroize();
             *existing = record;
@@ -168,38 +179,74 @@ fn normalize_password(value: &str) -> String {
     }
 }
 
-fn imported_metadata(status: Option<String>, phone: Option<String>) -> String {
-    let mut metadata = Vec::new();
+fn excel_modified_date(path: &Path) -> Result<String, VaultError> {
+    let file = File::open(path)?;
+    let mut archive = ZipArchive::new(file)
+        .map_err(|error| VaultError::Excel(format!("Could not open Excel archive: {error}")))?;
 
-    if let Some(status) = status {
-        if !status.trim().is_empty() {
-            metadata.push(format!("Status: {}", status.trim()));
-        }
+    let mut core = archive
+        .by_name("docProps/core.xml")
+        .map_err(|error| VaultError::Excel(format!("Excel metadata is unavailable: {error}")))?;
+
+    let mut xml = String::new();
+    core.read_to_string(&mut xml)
+        .map_err(|error| VaultError::Excel(format!("Could not read Excel metadata: {error}")))?;
+
+    let start = xml
+        .find("<dcterms:modified")
+        .and_then(|index| xml[index..].find('>').map(|offset| index + offset + 1))
+        .ok_or_else(|| VaultError::Excel("Excel last-modified metadata is unavailable.".into()))?;
+
+    let end = xml[start..]
+        .find("</dcterms:modified>")
+        .map(|offset| start + offset)
+        .ok_or_else(|| VaultError::Excel("Excel last-modified metadata is unavailable.".into()))?;
+
+    let value = xml[start..end].trim();
+    let date = value.split('T').next().unwrap_or(value).trim();
+
+    if date.is_empty() {
+        return Err(VaultError::Excel("Excel last-modified date is empty.".into()));
     }
 
-    if let Some(phone) = phone {
-        if !phone.trim().is_empty() {
-            metadata.push(format!("Phone: {}", phone.trim()));
-        }
+    Ok(date.to_string())
+}
+
+fn merge_import_notes(existing: &str, provenance: &str) -> String {
+    if existing.trim().is_empty() {
+        return provenance.to_string();
     }
 
-    if metadata.is_empty() {
-        String::new()
-    } else {
-        format!("Imported from Excel · {}", metadata.join(" · "))
+    if let Some((_, remainder)) = existing.split_once('
+') {
+        return format!("{provenance}\n{remainder}");
     }
+
+    if existing.starts_with("Imported from Excel ·") {
+        return provenance.to_string();
+    }
+
+    format!("{provenance}\n{existing}")
 }
 
 fn same_identity(left: &CredentialRecord, right: &CredentialRecord) -> bool {
-    if left.service.trim().eq_ignore_ascii_case(right.service.trim())
-        && left.username.trim().eq_ignore_ascii_case(right.username.trim())
-        && left.email.trim().eq_ignore_ascii_case(right.email.trim())
-        && (!left.username.trim().is_empty() || !left.email.trim().is_empty())
-    {
-        true
-    } else {
-        false
+    if !left.service.trim().eq_ignore_ascii_case(right.service.trim()) {
+        return false;
     }
+
+    let left_email = left.email.trim();
+    let right_email = right.email.trim();
+
+    if !left_email.is_empty() && !right_email.is_empty() {
+        return left_email.eq_ignore_ascii_case(right_email);
+    }
+
+    let left_username = left.username.trim();
+    let right_username = right.username.trim();
+
+    !left_username.is_empty()
+        && !right_username.is_empty()
+        && left_username.eq_ignore_ascii_case(right_username)
 }
 
 fn chrono_now() -> String {
