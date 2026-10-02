@@ -466,6 +466,8 @@ fn write_kdbx(
             entry.set_unprotected(fields::TITLE, credential.service.clone());
             entry.set_unprotected(fields::USERNAME, credential.username.clone());
             entry.set_unprotected("PalmiEmail", credential.email.clone());
+            entry.set_unprotected("PalmiStatus", credential.status.clone());
+            entry.set_unprotected("PalmiPhone", credential.phone.clone());
             entry.set_protected(fields::PASSWORD, credential.password.clone());
             entry.set_unprotected(fields::URL, credential.url.clone());
             entry.set_unprotected(fields::NOTES, credential.notes.clone());
@@ -501,6 +503,8 @@ fn entry_to_record(entry: &keepass::db::EntryRef<'_>) -> Result<CredentialRecord
     let service = entry.get_title().unwrap_or("").to_string();
     let mut username = entry.get_username().unwrap_or("").to_string();
     let mut email = entry.get("PalmiEmail").unwrap_or("").to_string();
+    let status = entry.get("PalmiStatus").unwrap_or("").to_string();
+    let phone = entry.get("PalmiPhone").unwrap_or("").to_string();
     let password = entry.get_password().unwrap_or("").to_string();
     let url = entry.get_url().unwrap_or("").to_string();
     let notes = entry.get("Notes").unwrap_or("").to_string();
@@ -521,6 +525,8 @@ fn entry_to_record(entry: &keepass::db::EntryRef<'_>) -> Result<CredentialRecord
         category: entry.get("PalmiCategory").unwrap_or("Other").to_string(),
         username,
         email,
+        status,
+        phone,
         url,
         password,
         notes,
