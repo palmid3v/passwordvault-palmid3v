@@ -348,7 +348,7 @@ function App() {
       </div>}
 
       {page === 'Backup' && <Panel title="Vault lifecycle"><div className="lifecycle">
-        <Lifecycle icon={<FileUp />} title="Import encrypted KDBX" text="Open another KDBX and make it the active vault." onClick={() => startVaultAction('import')} />
+        <Lifecycle icon={<FileUp />} title="Import encrypted KDBX" text="Merge another KDBX into the current encrypted vault. Existing accounts are updated; new accounts are added." onClick={() => startVaultAction('import')} />
         <Lifecycle icon={<FileUp />} title="Import Excel" text="Migrate credentials from an .xlsx file into the encrypted vault." onClick={importExcel} />
         <Lifecycle icon={<FileDown />} title="Export encrypted KDBX" text="Write the active encrypted vault to another .kdbx file." onClick={async () => {
           const path = await chooseVaultFile('save'); if (path && !Array.isArray(path)) await runNative(() => nativeVault.export(path), 'Encrypted vault exported.');
