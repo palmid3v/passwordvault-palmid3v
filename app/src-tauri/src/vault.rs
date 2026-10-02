@@ -149,6 +149,65 @@ impl VaultSession {
         self.summary()
     }
 
+    pub fn merge_kdbx(&mut self, path: &str, password: &str) -> Result<VaultSummary, VaultError> {
+        if self.master_password.is_none() {
+            return Err(VaultError::Locked);
+        }
+        if password.is_empty() {
+            return Err(VaultError::EmptyPassword);
+        }
+
+        let normalized = normalize_kdbx_path(path)?;
+        let file = File::open(&normalized)?;
+        let mut reader = BufReader::new(file);
+        let key = DatabaseKey::new().with_password(password);
+        let database = Database::open(&mut reader, key)
+            .map_err(|error| VaultError::KeePass(error.to_string()))?;
+
+        let mut imported = Vec::new();
+        collect_group_entries(database.root(), &mut imported)?;
+
+        for incoming in imported {
+            if let Some(existing) = self
+                .credentials
+                .iter_mut()
+                .find(|existing| credential_identity_matches(existing, &incoming))
+            {
+                let id = existing.id.clone();
+                let incoming_password = incoming.password.clone();
+                let incoming_url = incoming.url.clone();
+                let incoming_notes = incoming.notes.clone();
+                let incoming_username = incoming.username.clone();
+                let incoming_email = incoming.email.clone();
+                let incoming_service = incoming.service.clone();
+                let incoming_updated = incoming.updated.clone();
+                let incoming_category = incoming.category.clone();
+                let incoming_importance = incoming.importance.clone();
+                let incoming_twofa = incoming.twofa;
+
+                existing.zeroize();
+                existing.id = id;
+                existing.service = if incoming_service.is_empty() { existing.service.clone() } else { incoming_service };
+                existing.username = if incoming_username.is_empty() { existing.username.clone() } else { incoming_username };
+                existing.email = if incoming_email.is_empty() { existing.email.clone() } else { incoming_email };
+                existing.url = if incoming_url.is_empty() { existing.url.clone() } else { incoming_url };
+                existing.password = if incoming_password.is_empty() { existing.password.clone() } else { incoming_password };
+                existing.notes = if incoming_notes.is_empty() { existing.notes.clone() } else { incoming_notes };
+                existing.category = if incoming_category == "Other" { existing.category.clone() } else { incoming_category };
+                existing.importance = if incoming_importance == "Normal" { existing.importance.clone() } else { incoming_importance };
+                existing.twofa = incoming_twofa || existing.twofa;
+                existing.updated = if incoming_updated.is_empty() { chrono_now() } else { incoming_updated };
+            } else {
+                let mut incoming = incoming;
+                incoming.id = uuid::Uuid::new_v4().to_string();
+                self.credentials.push(incoming);
+            }
+        }
+
+        self.touch()?;
+        self.save()
+    }
+
     pub fn open_with_keychain(&mut self, path: &str) -> Result<VaultSummary, VaultError> {
         let entry = KeyringEntry::new(KEYCHAIN_SERVICE, KEYCHAIN_USER)
             .map_err(|error| VaultError::Keychain(error.to_string()))?;
@@ -460,6 +519,27 @@ fn entry_to_record(entry: &keepass::db::EntryRef<'_>) -> Result<CredentialRecord
         importance: entry.get("PalmiImportance").unwrap_or("Normal").to_string(),
         updated: entry.get("PalmiUpdated").map(str::to_owned).unwrap_or_else(chrono_now),
     })
+}
+
+fn credential_identity_matches(left: &CredentialRecord, right: &CredentialRecord) -> bool {
+    if !left.service.trim().eq_ignore_ascii_case(right.service.trim()) {
+        return false;
+    }
+
+    let left_email = left.email.trim();
+    let right_email = right.email.trim();
+    let left_username = left.username.trim();
+    let right_username = right.username.trim();
+
+    if !left_email.is_empty() || !right_email.is_empty() {
+        return !left_email.is_empty()
+            && !right_email.is_empty()
+            && left_email.eq_ignore_ascii_case(right_email);
+    }
+
+    !left_username.is_empty()
+        && !right_username.is_empty()
+        && left_username.eq_ignore_ascii_case(right_username)
 }
 
 fn chrono_now() -> String {
