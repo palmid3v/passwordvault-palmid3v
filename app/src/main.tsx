@@ -360,6 +360,14 @@ function App() {
       {modal === 'view' && selected && <CredentialViewer credential={selected} onClose={() => setModal(null)} onEdit={() => openEdit(selected)} onDelete={() => removeCredential(selected)} onCopy={copyValue} />}
     </main>
 
+    {modal === 'master' && <MasterModal
+      action={vaultAction}
+      value={masterPassword}
+      setValue={setMasterPassword}
+      onSubmit={submitMasterPassword}
+      onClose={() => { setModal(null); setVaultAction(null); }}
+      error={error}
+    />}
     {toast && <div className="toast"><Check /> {toast}</div>}
   </div>;
 }
