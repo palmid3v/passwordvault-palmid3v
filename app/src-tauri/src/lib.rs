@@ -1,3 +1,4 @@
+mod excel_import;
 mod vault;
 
 use std::sync::{Arc, Mutex};
