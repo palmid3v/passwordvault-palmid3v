@@ -223,14 +223,14 @@ fn merge_import_notes(existing: &str, provenance: &str) -> String {
             return provenance.to_string();
         }
 
-        if let Some((_, manual_notes)) = remainder.split_once('\\n') {
-            return format!("{provenance}\\n{}", manual_notes.trim_start());
+        if let Some((_, manual_notes)) = remainder.split_once('\n') {
+            return format!("{provenance}\n{}", manual_notes.trim_start());
         }
 
         return provenance.to_string();
     }
 
-    format!("{provenance}\\n{existing}")
+    format!("{provenance}\n{existing}")
 }
 
 #[cfg(test)]
@@ -249,10 +249,10 @@ mod tests {
     fn provenance_preserves_manual_notes() {
         assert_eq!(
             merge_import_notes(
-                "Imported from Excel · 2026-05-20\\nKeep this note",
+                "Imported from Excel · 2026-05-20\nKeep this note",
                 "Imported from Excel · 2026-10-02"
             ),
-            "Imported from Excel · 2026-10-02\\nKeep this note"
+            "Imported from Excel · 2026-10-02\nKeep this note"
         );
     }
 
@@ -260,7 +260,7 @@ mod tests {
     fn provenance_is_added_to_existing_manual_notes() {
         assert_eq!(
             merge_import_notes("Important account note", "Imported from Excel · 2026-10-02"),
-            "Imported from Excel · 2026-10-02\\nImportant account note"
+            "Imported from Excel · 2026-10-02\nImportant account note"
         );
     }
 }
