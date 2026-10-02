@@ -137,11 +137,17 @@ function App() {
         const result = action === 'create'
           ? await nativeVault.create(path, masterPassword)
           : action === 'import'
-            ? await nativeVault.import(path, masterPassword)
+            ? await nativeVault.mergeKdbx(path, masterPassword)
             : await nativeVault.open(path, masterPassword);
 
         await refresh(result);
-        setToast(action === 'create' ? 'Encrypted vault created.' : 'Encrypted vault opened.');
+        setToast(
+          action === 'create'
+            ? 'Encrypted vault created.'
+            : action === 'import'
+              ? 'KDBX merged into the current encrypted vault.'
+              : 'Encrypted vault opened.',
+        );
       }
 
       setModal(null);
@@ -342,7 +348,7 @@ function App() {
       </div>}
 
       {page === 'Backup' && <Panel title="Vault lifecycle"><div className="lifecycle">
-        <Lifecycle icon={<FileUp />} title="Import encrypted KDBX" text="Open another KDBX and make it the active vault." onClick={() => startVaultAction('import')} />
+        <Lifecycle icon={<FileUp />} title="Import encrypted KDBX" text="Merge another KDBX into the current encrypted vault. Existing accounts are updated; new accounts are added." onClick={() => startVaultAction('import')} />
         <Lifecycle icon={<FileUp />} title="Import Excel" text="Migrate credentials from an .xlsx file into the encrypted vault." onClick={importExcel} />
         <Lifecycle icon={<FileDown />} title="Export encrypted KDBX" text="Write the active encrypted vault to another .kdbx file." onClick={async () => {
           const path = await chooseVaultFile('save'); if (path && !Array.isArray(path)) await runNative(() => nativeVault.export(path), 'Encrypted vault exported.');
@@ -419,13 +425,23 @@ function MasterModal({ action, value, setValue, onSubmit, onClose, error }: {
 }) {
   const create = action === 'create';
   const keychain = action === 'keychain';
-  return <Modal title={create ? 'Create encrypted vault' : keychain ? 'Unlock with OS keychain' : 'Unlock encrypted vault'} onClose={onClose}>
+  const merge = action === 'import';
+  return <Modal
+    title={create ? 'Create encrypted vault' : keychain ? 'Unlock with OS keychain' : merge ? 'Merge encrypted KDBX' : 'Unlock encrypted vault'}
+    onClose={onClose}
+  >
     <div className="form single">
-      {!keychain && <Field label={create ? 'New master password · minimum 12 characters' : 'Master password'}><input autoFocus type="password" value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && onSubmit()} /></Field>}
-      <div className="nativeHint"><Shield /><span>{keychain ? 'The password will be retrieved from the native OS credential store.' : 'The password is passed to the native vault only for unlock/create and is not persisted by the React UI.'}</span></div>
+      {!keychain && <Field label={create ? 'New master password · minimum 12 characters' : merge ? 'Source vault master password' : 'Master password'}><input autoFocus type="password" value={value} onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && onSubmit()} /></Field>}
+      <div className="nativeHint"><Shield /><span>{
+        keychain
+          ? 'The password will be retrieved from the native OS credential store.'
+          : merge
+            ? 'The selected KDBX will be merged into the currently unlocked vault. Existing credentials are updated when the account identity matches; new accounts are added. The current vault file remains the active destination.'
+            : 'The password is passed to the native vault only for unlock/create and is not persisted by the React UI.'
+      }</span></div>
       {error && <div className="errorBanner"><AlertTriangle /><span>{error}</span></div>}
     </div>
-    <div className="dialogActions"><span className="spacer" /><button onClick={onClose}>Cancel</button><button className="primary" onClick={onSubmit}>{create ? 'Create & encrypt' : 'Unlock'}</button></div>
+    <div className="dialogActions"><span className="spacer" /><button onClick={onClose}>Cancel</button><button className="primary" onClick={onSubmit}>{create ? 'Create & encrypt' : merge ? 'Merge into current vault' : 'Unlock'}</button></div>
   </Modal>;
 }
 

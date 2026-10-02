@@ -149,6 +149,74 @@ impl VaultSession {
         self.summary()
     }
 
+    pub fn merge_kdbx(&mut self, path: &str, password: &str) -> Result<VaultSummary, VaultError> {
+        if self.master_password.is_none() {
+            return Err(VaultError::Locked);
+        }
+        if password.is_empty() {
+            return Err(VaultError::EmptyPassword);
+        }
+
+        let normalized = normalize_kdbx_path(path)?;
+        let file = File::open(&normalized)?;
+        let mut reader = BufReader::new(file);
+        let key = DatabaseKey::new().with_password(password);
+        let database = Database::open(&mut reader, key)
+            .map_err(|error| VaultError::KeePass(error.to_string()))?;
+
+        let mut imported = Vec::new();
+        collect_group_entries(database.root(), &mut imported)?;
+
+        for incoming in imported {
+            if let Some(existing) = self
+                .credentials
+                .iter_mut()
+                .find(|existing| credential_identity_matches(existing, &incoming))
+            {
+                let mut merged = existing.clone();
+
+                if !incoming.service.is_empty() {
+                    merged.service = incoming.service.clone();
+                }
+                if !incoming.username.is_empty() {
+                    merged.username = incoming.username.clone();
+                }
+                if !incoming.email.is_empty() {
+                    merged.email = incoming.email.clone();
+                }
+                if !incoming.url.is_empty() {
+                    merged.url = incoming.url.clone();
+                }
+                if !incoming.password.is_empty() {
+                    merged.password = incoming.password.clone();
+                }
+                if !incoming.notes.is_empty() {
+                    merged.notes = incoming.notes.clone();
+                }
+                if incoming.category != "Other" {
+                    merged.category = incoming.category.clone();
+                }
+                if incoming.importance != "Normal" {
+                    merged.importance = incoming.importance.clone();
+                }
+                merged.twofa = incoming.twofa || merged.twofa;
+                if !incoming.updated.is_empty() {
+                    merged.updated = incoming.updated.clone();
+                }
+
+                existing.zeroize();
+                *existing = merged;
+            } else {
+                let mut incoming = incoming;
+                incoming.id = uuid::Uuid::new_v4().to_string();
+                self.credentials.push(incoming);
+            }
+        }
+
+        self.touch()?;
+        self.save()
+    }
+
     pub fn open_with_keychain(&mut self, path: &str) -> Result<VaultSummary, VaultError> {
         let entry = KeyringEntry::new(KEYCHAIN_SERVICE, KEYCHAIN_USER)
             .map_err(|error| VaultError::Keychain(error.to_string()))?;
@@ -462,6 +530,26 @@ fn entry_to_record(entry: &keepass::db::EntryRef<'_>) -> Result<CredentialRecord
     })
 }
 
+fn credential_identity_matches(left: &CredentialRecord, right: &CredentialRecord) -> bool {
+    if !left.service.trim().eq_ignore_ascii_case(right.service.trim()) {
+        return false;
+    }
+
+    let left_email = left.email.trim();
+    let right_email = right.email.trim();
+
+    if !left_email.is_empty() && !right_email.is_empty() {
+        return left_email.eq_ignore_ascii_case(right_email);
+    }
+
+    let left_username = left.username.trim();
+    let right_username = right.username.trim();
+
+    !left_username.is_empty()
+        && !right_username.is_empty()
+        && left_username.eq_ignore_ascii_case(right_username)
+}
+
 fn chrono_now() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
     let seconds = SystemTime::now()
@@ -494,6 +582,70 @@ mod tests {
             importance: "High".into(),
             updated: "test".into(),
         }
+    }
+
+    #[test]
+    fn merge_identity_prefers_email() {
+        let left = CredentialRecord {
+            id: "1".into(),
+            service: "Tumblr".into(),
+            category: "Other".into(),
+            username: "old-user".into(),
+            email: "same@example.com".into(),
+            url: String::new(),
+            password: "old".into(),
+            notes: String::new(),
+            twofa: false,
+            importance: "Normal".into(),
+            updated: "1".into(),
+        };
+        let right = CredentialRecord {
+            id: "2".into(),
+            service: "tumblr".into(),
+            category: "Other".into(),
+            username: "new-user".into(),
+            email: "SAME@example.com".into(),
+            url: String::new(),
+            password: "new".into(),
+            notes: String::new(),
+            twofa: false,
+            importance: "Normal".into(),
+            updated: "2".into(),
+        };
+
+        assert!(credential_identity_matches(&left, &right));
+    }
+
+    #[test]
+    fn merge_identity_creates_new_account_for_different_email() {
+        let left = CredentialRecord {
+            id: "1".into(),
+            service: "Tumblr".into(),
+            category: "Other".into(),
+            username: "user".into(),
+            email: "one@example.com".into(),
+            url: String::new(),
+            password: "old".into(),
+            notes: String::new(),
+            twofa: false,
+            importance: "Normal".into(),
+            updated: "1".into(),
+        };
+        let right = CredentialRecord {
+            id: "2".into(),
+            service: "Tumblr".into(),
+            category: "Other".into(),
+            username: "user".into(),
+            email: "two@example.com".into(),
+            url: String::new(),
+            password: "new".into(),
+            notes: String::new(),
+            twofa: false,
+            importance: "Normal".into(),
+            updated: "2".into(),
+        };
+
+        assert!(!credential_identity_matches(&left, &right));
     }
 
     #[test]
