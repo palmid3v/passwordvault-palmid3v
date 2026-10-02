@@ -1,3 +1,4 @@
+mod excel_import;
 mod vault;
 
 use std::sync::{Arc, Mutex};
@@ -23,6 +24,20 @@ async fn pick_open_kdbx(app: tauri::AppHandle) -> Result<Option<String>, String>
         .dialog()
         .file()
         .add_filter("KeePass database", &["kdbx"])
+        .blocking_pick_file();
+
+    selected
+        .map(|file| file.into_path().map(|path| path.display().to_string()).map_err(|error| error.to_string()))
+        .transpose()
+}
+
+
+#[tauri::command]
+async fn pick_import_xlsx(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let selected = app
+        .dialog()
+        .file()
+        .add_filter("Excel workbook", &["xlsx"])
         .blocking_pick_file();
 
     selected
@@ -91,6 +106,16 @@ fn vault_export(
 ) -> Result<VaultSummary, String> {
     let vault = shared(&state)?;
     vault.export(&path).map_err(|error| error.to_string())
+}
+
+
+#[tauri::command]
+fn vault_import_excel(
+    state: State<'_, SharedVault>,
+    path: String,
+) -> Result<VaultSummary, String> {
+    let mut vault = shared(&state)?;
+    vault.import_excel(&path).map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -179,6 +204,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             pick_open_kdbx,
+            pick_import_xlsx,
             pick_save_kdbx,
             vault_status,
             vault_create,
@@ -186,6 +212,7 @@ pub fn run() {
             vault_open_with_keychain,
             vault_save,
             vault_export,
+            vault_import_excel,
             vault_import,
             vault_credentials,
             vault_upsert,

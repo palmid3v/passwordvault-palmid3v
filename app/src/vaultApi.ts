@@ -5,6 +5,7 @@ export type Credential = {
   service: string;
   category: string;
   username: string;
+  email: string;
   url: string;
   password: string;
   notes: string;
@@ -43,5 +44,7 @@ export const nativeVault = {
   keychainStore: () => invoke<void>('keychain_store'),
   keychainClear: () => invoke<void>('keychain_clear'),
   pickOpenPath: () => invoke<string | null>('pick_open_kdbx'),
+  pickImportXlsxPath: () => invoke<string | null>('pick_import_xlsx'),
   pickSavePath: () => invoke<string | null>('pick_save_kdbx'),
+  importExcel: (path: string) => invoke<VaultSummary>('vault_import_excel', { path }),
 };

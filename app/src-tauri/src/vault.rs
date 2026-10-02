@@ -23,6 +23,7 @@ pub struct CredentialRecord {
     pub service: String,
     pub category: String,
     pub username: String,
+    pub email: String,
     pub url: String,
     pub password: String,
     pub notes: String,
@@ -54,7 +55,9 @@ pub enum VaultError {
     EmptyPassword,
     WeakPassword,
     InvalidPath,
+    InvalidImportPath,
     Io(std::io::Error),
+    Excel(String),
     KeePass(String),
     Keychain(String),
     InvalidCredential(String),
@@ -67,7 +70,9 @@ impl VaultError {
             Self::EmptyPassword => "Master password is required.".into(),
             Self::WeakPassword => "A new vault master password must contain at least 12 characters.".into(),
             Self::InvalidPath => "A valid .kdbx file path is required.".into(),
+            Self::InvalidImportPath => "A valid .xlsx file path is required.".into(),
             Self::Io(error) => format!("File operation failed: {error}"),
+            Self::Excel(error) => format!("Excel import failed: {error}"),
             Self::KeePass(error) => format!("KDBX operation failed: {error}"),
             Self::Keychain(error) => format!("OS keychain operation failed: {error}"),
             Self::InvalidCredential(error) => error.clone(),
@@ -199,6 +204,18 @@ impl VaultSession {
         write_kdbx(path, &self.credentials, password)?;
         self.touch()?;
         self.summary()
+    }
+
+    pub fn import_excel(&mut self, path: &str) -> Result<VaultSummary, VaultError> {
+        if self.master_password.is_none() {
+            return Err(VaultError::Locked);
+        }
+
+        let normalized = normalize_xlsx_path(path)?;
+        crate::excel_import::import_records(&normalized, &mut self.credentials)?;
+
+        self.touch()?;
+        self.save()
     }
 
     pub fn export(&self, path: &str) -> Result<VaultSummary, VaultError> {
@@ -347,6 +364,20 @@ fn normalize_kdbx_path(path: &str) -> Result<PathBuf, VaultError> {
     Ok(path)
 }
 
+fn normalize_xlsx_path(path: &str) -> Result<PathBuf, VaultError> {
+    let trimmed = path.trim();
+    if trimmed.is_empty() {
+        return Err(VaultError::InvalidImportPath);
+    }
+
+    let path = PathBuf::from(trimmed);
+    if path.extension().and_then(|ext| ext.to_str()).map(|ext| ext.eq_ignore_ascii_case("xlsx")) != Some(true) {
+        return Err(VaultError::InvalidImportPath);
+    }
+
+    Ok(path)
+}
+
 fn write_kdbx(
     path: &Path,
     credentials: &[CredentialRecord],
@@ -366,6 +397,7 @@ fn write_kdbx(
             let mut entry = root.add_entry();
             entry.set_unprotected(fields::TITLE, credential.service.clone());
             entry.set_unprotected(fields::USERNAME, credential.username.clone());
+            entry.set_unprotected("PalmiEmail", credential.email.clone());
             entry.set_protected(fields::PASSWORD, credential.password.clone());
             entry.set_unprotected(fields::URL, credential.url.clone());
             entry.set_unprotected(fields::NOTES, credential.notes.clone());
@@ -399,15 +431,20 @@ fn write_kdbx(
 
 fn entry_to_record(entry: &keepass::db::EntryRef<'_>) -> Result<CredentialRecord, VaultError> {
     let service = entry.get_title().unwrap_or("").to_string();
-    let username = entry.get_username().unwrap_or("").to_string();
+    let mut username = entry.get_username().unwrap_or("").to_string();
+    let mut email = entry.get("PalmiEmail").unwrap_or("").to_string();
     let password = entry.get_password().unwrap_or("").to_string();
     let url = entry.get_url().unwrap_or("").to_string();
     let notes = entry.get("Notes").unwrap_or("").to_string();
 
-    if service.is_empty() || password.is_empty() {
+    if service.is_empty() {
         return Err(VaultError::InvalidCredential(
-            "Imported KDBX contains an entry without a service title or password.".into(),
+            "Imported KDBX contains an entry without a service title.".into(),
         ));
+    }
+
+    if username.contains('@') && email.is_empty() {
+        email = std::mem::take(&mut username);
     }
 
     Ok(CredentialRecord {
@@ -415,6 +452,7 @@ fn entry_to_record(entry: &keepass::db::EntryRef<'_>) -> Result<CredentialRecord
         service,
         category: entry.get("PalmiCategory").unwrap_or("Other").to_string(),
         username,
+        email,
         url,
         password,
         notes,
@@ -447,7 +485,8 @@ mod tests {
             id: uuid::Uuid::new_v4().to_string(),
             service: "GitHub".into(),
             category: "Development".into(),
-            username: "palmi@example.com".into(),
+            username: "palmi".into(),
+            email: "palmi@example.com".into(),
             url: "https://github.com".into(),
             password: "correct horse battery staple".into(),
             notes: "integration-test".into(),

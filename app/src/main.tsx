@@ -18,7 +18,7 @@ type VaultAction = 'create' | 'open' | 'import' | 'keychain' | null;
 const isTauri = '__TAURI_INTERNALS__' in window;
 const categories = ['Development', 'Finance', 'Email', 'Social', 'Work', 'Gaming', 'Shopping', 'Cloud', 'Government', 'Other'];
 const emptyForm = {
-  service: '', category: 'Development', username: '', url: '', password: '',
+  service: '', category: 'Development', username: '', email: '', url: '', password: '',
   notes: '', twofa: false, importance: 'Normal' as Importance
 };
 
@@ -202,6 +202,20 @@ function App() {
     setFormPasswordVisible(true);
   };
 
+  const importExcel = async () => {
+    const path = await nativeVault.pickImportXlsxPath();
+    if (!path) return;
+
+    if (!window.confirm('Import credentials from this Excel workbook into the encrypted vault?')) {
+      return;
+    }
+
+    await runNative(
+      () => nativeVault.importExcel(path),
+      'Excel credentials imported into the encrypted vault.',
+    );
+  };
+
   const lockVault = async () => {
     try {
       if (isTauri) await nativeVault.lock();
@@ -369,14 +383,15 @@ function CredentialEditor({ form, setForm, visible, setVisible, onClose, onSave,
   return <Modal title={editing ? 'Edit credential' : 'New credential'} onClose={onClose}>
     <div className="form">
       <Field label="Service *"><input autoFocus value={form.service} onChange={(e) => setForm({ ...form, service: e.target.value })} placeholder="GitHub" /></Field>
-      <Field label="Username / Email"><input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="you@example.com" /></Field>
-      <Field label="URL"><input value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} placeholder="https://..." /></Field>
-      <Field label="Password"><div className="passwordInput"><input type={visible ? 'text' : 'password'} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
+      <Field label="Username"><input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="palmi" /></Field>
+      <Field label="Email"><input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="you@example.com" /></Field>
+      <Field full label="URL"><input value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} placeholder="https://..." /></Field>
+      <Field full label="Password"><div className="passwordInput"><input type={visible ? 'text' : 'password'} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
         <button type="button" onClick={() => setVisible(!visible)} aria-label={visible ? 'Hide password' : 'Show password'}>{visible ? <EyeOff /> : <Eye />}</button></div>
         <div className="strength"><span className={strength.level}>{strength.label}</span><i><b style={{ width: strength.percent + '%' }} /></i></div></Field>
       <Field label="Category"><select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>{categories.map((item) => <option key={item}>{item}</option>)}</select></Field>
       <Field label="Importance"><select value={form.importance} onChange={(e) => setForm({ ...form, importance: e.target.value as Importance })}><option>Normal</option><option>High</option><option>Critical</option></select></Field>
-      <Field label="Notes"><textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Optional notes" /></Field>
+      <Field full label="Notes"><textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Optional notes" /></Field>
       <label className="check"><input type="checkbox" checked={form.twofa} onChange={(e) => setForm({ ...form, twofa: e.target.checked })} /> 2FA enabled</label>
     </div>
     <div className="dialogActions"><button onClick={onGenerate}><Zap /> Generate password</button><span className="spacer" /><button onClick={onClose}>Cancel</button>
@@ -390,6 +405,7 @@ function CredentialViewer({ credential, onClose, onEdit, onDelete, onCopy }: {
   const [show, setShow] = useState(false);
   return <Modal title={credential.service} onClose={onClose}><div className="detailGrid">
     <Detail label="Username" value={credential.username || '—'} action={credential.username ? <button onClick={() => onCopy(credential.username, 'Username')}><Copy /></button> : undefined} />
+    <Detail label="Email" value={credential.email || '—'} action={credential.email ? <button onClick={() => onCopy(credential.email, 'Email')}><Copy /></button> : undefined} />
     <Detail label="Password" value={show ? credential.password : '••••••••••••'} action={<><button onClick={() => setShow(!show)}>{show ? <EyeOff /> : <Eye />}</button><button onClick={() => onCopy(credential.password, 'Password')}><Copy /></button></>} />
     <Detail label="URL" value={credential.url || '—'} /><Detail label="Category" value={credential.category} />
     <Detail label="Importance" value={credential.importance} /><Detail label="2FA" value={credential.twofa ? 'Enabled' : 'Not enabled'} />
@@ -413,7 +429,9 @@ function MasterModal({ action, value, setValue, onSubmit, onClose, error }: {
 }
 
 function Detail({ label, value, action }: { label: string; value: string; action?: ReactNode }) { return <div className="detail"><span>{label}</span><div><b>{value}</b>{action}</div></div>; }
-function Field({ label, children }: { label: string; children: ReactNode }) { return <label className="field">{label}{children}</label>; }
+function Field({ label, children, full = false }: { label: string; children: ReactNode; full?: boolean }) {
+  return <label className={'field' + (full ? ' full' : '')}>{label}{children}</label>;
+}
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
   return <div className="modal" role="dialog" aria-modal="true" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
     <div className="dialog"><div className="dialogHead"><h2>{title}</h2><button onClick={onClose} aria-label="Close"><X /></button></div>{children}</div>
