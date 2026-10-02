@@ -37,7 +37,7 @@ async fn pick_import_xlsx(app: tauri::AppHandle) -> Result<Option<String>, Strin
     let selected = app
         .dialog()
         .file()
-        .add_filter("Excel workbook", &["xlsx"])
+        .set_title("Select Excel workbook")
         .blocking_pick_file();
 
     selected
