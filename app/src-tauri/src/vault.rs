@@ -437,9 +437,9 @@ fn entry_to_record(entry: &keepass::db::EntryRef<'_>) -> Result<CredentialRecord
     let url = entry.get_url().unwrap_or("").to_string();
     let notes = entry.get("Notes").unwrap_or("").to_string();
 
-    if service.is_empty() || password.is_empty() {
+    if service.is_empty() {
         return Err(VaultError::InvalidCredential(
-            "Imported KDBX contains an entry without a service title or password.".into(),
+            "Imported KDBX contains an entry without a service title.".into(),
         ));
     }
 
