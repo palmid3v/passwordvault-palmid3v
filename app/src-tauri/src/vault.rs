@@ -173,30 +173,39 @@ impl VaultSession {
                 .iter_mut()
                 .find(|existing| credential_identity_matches(existing, &incoming))
             {
-                let id = existing.id.clone();
-                let incoming_password = incoming.password.clone();
-                let incoming_url = incoming.url.clone();
-                let incoming_notes = incoming.notes.clone();
-                let incoming_username = incoming.username.clone();
-                let incoming_email = incoming.email.clone();
-                let incoming_service = incoming.service.clone();
-                let incoming_updated = incoming.updated.clone();
-                let incoming_category = incoming.category.clone();
-                let incoming_importance = incoming.importance.clone();
-                let incoming_twofa = incoming.twofa;
+                let mut merged = existing.clone();
+
+                if !incoming.service.is_empty() {
+                    merged.service = incoming.service.clone();
+                }
+                if !incoming.username.is_empty() {
+                    merged.username = incoming.username.clone();
+                }
+                if !incoming.email.is_empty() {
+                    merged.email = incoming.email.clone();
+                }
+                if !incoming.url.is_empty() {
+                    merged.url = incoming.url.clone();
+                }
+                if !incoming.password.is_empty() {
+                    merged.password = incoming.password.clone();
+                }
+                if !incoming.notes.is_empty() {
+                    merged.notes = incoming.notes.clone();
+                }
+                if incoming.category != "Other" {
+                    merged.category = incoming.category.clone();
+                }
+                if incoming.importance != "Normal" {
+                    merged.importance = incoming.importance.clone();
+                }
+                merged.twofa = incoming.twofa || merged.twofa;
+                if !incoming.updated.is_empty() {
+                    merged.updated = incoming.updated.clone();
+                }
 
                 existing.zeroize();
-                existing.id = id;
-                existing.service = if incoming_service.is_empty() { existing.service.clone() } else { incoming_service };
-                existing.username = if incoming_username.is_empty() { existing.username.clone() } else { incoming_username };
-                existing.email = if incoming_email.is_empty() { existing.email.clone() } else { incoming_email };
-                existing.url = if incoming_url.is_empty() { existing.url.clone() } else { incoming_url };
-                existing.password = if incoming_password.is_empty() { existing.password.clone() } else { incoming_password };
-                existing.notes = if incoming_notes.is_empty() { existing.notes.clone() } else { incoming_notes };
-                existing.category = if incoming_category == "Other" { existing.category.clone() } else { incoming_category };
-                existing.importance = if incoming_importance == "Normal" { existing.importance.clone() } else { incoming_importance };
-                existing.twofa = incoming_twofa || existing.twofa;
-                existing.updated = if incoming_updated.is_empty() { chrono_now() } else { incoming_updated };
+                *existing = merged;
             } else {
                 let mut incoming = incoming;
                 incoming.id = uuid::Uuid::new_v4().to_string();
@@ -528,14 +537,13 @@ fn credential_identity_matches(left: &CredentialRecord, right: &CredentialRecord
 
     let left_email = left.email.trim();
     let right_email = right.email.trim();
+
+    if !left_email.is_empty() && !right_email.is_empty() {
+        return left_email.eq_ignore_ascii_case(right_email);
+    }
+
     let left_username = left.username.trim();
     let right_username = right.username.trim();
-
-    if !left_email.is_empty() || !right_email.is_empty() {
-        return !left_email.is_empty()
-            && !right_email.is_empty()
-            && left_email.eq_ignore_ascii_case(right_email);
-    }
 
     !left_username.is_empty()
         && !right_username.is_empty()
