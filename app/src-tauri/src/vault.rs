@@ -1,5 +1,5 @@
 use keepass::{
-    db::{fields, Database},
+    db::{fields, Database, EntryRef, GroupRef},
     DatabaseKey,
 };
 use keyring::Entry as KeyringEntry;
@@ -133,9 +133,8 @@ impl VaultSession {
         let database = Database::open(&mut reader, key)
             .map_err(|error| VaultError::KeePass(error.to_string()))?;
 
-        let credentials = database
-            .root()
-            .all_entries()
+        let credentials = collect_group_entries(database.root())
+            .into_iter()
             .map(entry_to_record)
             .collect::<Result<Vec<_>, _>>()?;
 
@@ -297,6 +296,17 @@ impl Drop for VaultSession {
         self.credentials.zeroize();
         self.master_password.zeroize();
     }
+}
+
+
+fn collect_group_entries<'a>(group: GroupRef<'a>) -> Vec<EntryRef<'a>> {
+    let mut entries = group.entries().collect::<Vec<_>>();
+
+    for child_group in group.groups() {
+        entries.extend(collect_group_entries(child_group));
+    }
+
+    entries
 }
 
 fn validate_new_password(password: &str) -> Result<(), VaultError> {
