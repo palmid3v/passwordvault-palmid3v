@@ -119,13 +119,13 @@ fn vault_import_excel(
 }
 
 #[tauri::command]
-fn vault_import(
+fn vault_merge_kdbx(
     state: State<'_, SharedVault>,
     path: String,
     master_password: String,
 ) -> Result<VaultSummary, String> {
     let mut vault = shared(&state)?;
-    vault.open(&path, &master_password).map_err(|error| error.to_string())
+    vault.merge_kdbx(&path, &master_password).map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -213,7 +213,7 @@ pub fn run() {
             vault_save,
             vault_export,
             vault_import_excel,
-            vault_import,
+            vault_merge_kdbx,
             vault_credentials,
             vault_upsert,
             vault_delete,
