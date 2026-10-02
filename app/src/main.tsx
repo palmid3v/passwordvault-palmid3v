@@ -108,30 +108,42 @@ function App() {
   };
 
   const submitMasterPassword = async () => {
-    if (!masterPassword) {
-      setError('Master password is required.');
-      return;
-    }
     const action = vaultAction;
+
+    if (!action) return;
+
     try {
-      let path: string | null = null;
+      setError('');
+
       if (action === 'keychain') {
         if (!summary?.path) {
           setError('Open a vault path first.');
           return;
         }
-        await runNative(() => nativeVault.openWithKeychain(summary.path!), 'Vault unlocked with the OS keychain.');
+
+        await runNative(
+          () => nativeVault.openWithKeychain(summary.path!),
+          'Vault unlocked with the OS keychain.',
+        );
       } else {
-        path = await chooseVaultFile(action === 'create' ? 'save' : 'open');
+        if (!masterPassword) {
+          setError('Master password is required.');
+          return;
+        }
+
+        const path = await chooseVaultFile(action === 'create' ? 'save' : 'open');
         if (!path || Array.isArray(path)) return;
+
         const result = action === 'create'
           ? await nativeVault.create(path, masterPassword)
           : action === 'import'
             ? await nativeVault.import(path, masterPassword)
             : await nativeVault.open(path, masterPassword);
+
         await refresh(result);
         setToast(action === 'create' ? 'Encrypted vault created.' : 'Encrypted vault opened.');
       }
+
       setModal(null);
       setVaultAction(null);
       setMasterPassword('');
