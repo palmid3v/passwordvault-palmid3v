@@ -6,7 +6,7 @@ use std::time::Duration;
 use tauri::State;
 use tauri_plugin_dialog::DialogExt;
 use vault::{
-    CredentialRecord, KeychainStatus, VaultError, VaultSession, VaultSummary,
+    CredentialRecord, KeychainStatus, VaultSession, VaultSummary,
 };
 
 type SharedVault = Arc<Mutex<VaultSession>>;
