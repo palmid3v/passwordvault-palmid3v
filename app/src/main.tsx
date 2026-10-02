@@ -9,7 +9,6 @@ import {
 import { nativeVault, type Credential, type VaultSummary } from './vaultApi';
 import './styles.css';
 
-type Theme = 'light' | 'dark' | 'system';
 type Page = 'Dashboard' | 'Credentials' | 'Categories' | 'Security' | 'Backup';
 type Importance = 'Normal' | 'High' | 'Critical';
 type TwoFactorFilter = 'All' | 'Enabled' | 'Disabled';
@@ -18,15 +17,13 @@ type Modal = 'edit' | 'view' | 'master' | null;
 type VaultAction = 'create' | 'open' | 'import' | 'keychain' | null;
 
 const isTauri = '__TAURI_INTERNALS__' in window;
-const categories = ['Development', 'Finance', 'Email', 'Social', 'Work', 'Gaming', 'Shopping', 'Cloud', 'Government', 'Other'];
+const categories = ['Development', 'Finance', 'Email', 'Social', 'Subscriptions', 'Work', 'Gaming', 'Shopping', 'Cloud', 'Government', 'Other'];
 const emptyForm = {
   service: '', category: 'Development', username: '', email: '', status: 'Active', phone: '', url: '', password: '',
   notes: '', twofa: false, importance: 'Normal' as Importance
 };
 
 function App() {
-  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('passwordvault.theme') as Theme) || 'system');
-  const [dark, setDark] = useState(false);
   const [page, setPage] = useState<Page>('Dashboard');
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [summary, setSummary] = useState<VaultSummary | null>(null);
@@ -45,15 +42,6 @@ function App() {
   const [toast, setToast] = useState('');
   const [error, setError] = useState('');
   const [mobileNav, setMobileNav] = useState(false);
-
-  useEffect(() => {
-    localStorage.setItem('passwordvault.theme', theme);
-    const media = window.matchMedia('(prefers-color-scheme: dark)');
-    const apply = () => setDark(theme === 'dark' || (theme === 'system' && media.matches));
-    apply();
-    media.addEventListener('change', apply);
-    return () => media.removeEventListener('change', apply);
-  }, [theme]);
 
   useEffect(() => {
     if (!isTauri) return;
@@ -295,7 +283,7 @@ function App() {
   const nav = (next: Page) => { setPage(next); setMobileNav(false); };
 
   if (!isTauri) {
-    return <div className={'app ' + (dark ? 'dark' : '')}><div className="lockedScreen"><div className="lockedCard">
+    return <div className="app dark"><div className="lockedScreen"><div className="lockedCard">
       <div className="brandMark"><Shield /></div><span className="eyebrow">PALMI-D3V / DESKTOP ONLY</span>
       <h1>Native vault required</h1>
       <p>PasswordVault now uses Tauri/Rust for encrypted KDBX storage. The browser preview does not handle credentials or create plaintext fallbacks.</p>
@@ -330,11 +318,7 @@ function App() {
           {item === 'Dashboard' ? <LayoutDashboard /> : item === 'Credentials' ? <KeyRound /> : <Shield />}{item}
         </button>)}</nav>
       <div className="sideBottom">
-        <div className="themeRow"><span><Sun /> Theme</span>
-          <select value={theme} onChange={(event) => setTheme(event.target.value as Theme)}>
-            <option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option>
-          </select>
-        </div>
+        <div className="themeLabel"><Sun /> Dark mode</div>
         <button onClick={lockVault}><Lock /> Lock vault</button>
       </div>
     </aside>
