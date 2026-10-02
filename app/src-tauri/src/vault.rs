@@ -24,6 +24,8 @@ pub struct CredentialRecord {
     pub category: String,
     pub username: String,
     pub email: String,
+    pub status: String,
+    pub phone: String,
     pub url: String,
     pub password: String,
     pub notes: String,
