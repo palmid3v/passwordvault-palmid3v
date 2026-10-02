@@ -11,8 +11,10 @@ use vault::{
 
 type SharedVault = Arc<Mutex<VaultSession>>;
 
-fn shared(state: &State<'_, SharedVault>) -> Result<std::sync::MutexGuard<'_, VaultSession>, String> {
-    state.lock().map_err(|_| "Vault state lock poisoned".to_string())
+fn shared<'a>(state: &'a State<'_, SharedVault>) -> Result<std::sync::MutexGuard<'a, VaultSession>, String> {
+    state
+        .lock()
+        .map_err(|_| "Vault state lock poisoned".to_string())
 }
 
 #[tauri::command]
@@ -143,7 +145,7 @@ fn vault_set_auto_lock(
 
 #[tauri::command]
 fn keychain_status() -> Result<KeychainStatus, String> {
-    VaultSession::keychain_status().map_err(VaultError::to_string)
+    VaultSession::keychain_status().map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -154,7 +156,7 @@ fn keychain_store(state: State<'_, SharedVault>) -> Result<(), String> {
 
 #[tauri::command]
 fn keychain_clear() -> Result<(), String> {
-    VaultSession::clear_keychain().map_err(VaultError::to_string)
+    VaultSession::clear_keychain().map_err(|error| error.to_string())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
