@@ -292,7 +292,7 @@ function App() {
   }
 
   if (!summary || summary.locked) {
-    return <div className={'app ' + (dark ? 'dark' : '')}>
+    return <div className="app dark">
       <div className="lockedScreen"><div className="lockedCard vaultGate">
         <div className="brandMark"><Shield /></div><span className="eyebrow">PALMI-D3V / ENCRYPTED VAULT</span>
         <h1>{summary?.path ? 'Vault locked' : 'Open your vault'}</h1>
@@ -310,7 +310,7 @@ function App() {
     </div>;
   }
 
-  return <div className={'app ' + (dark ? 'dark' : '')}>
+  return <div className="app dark">
     <aside className={mobileNav ? 'open' : ''}>
       <div className="brand"><Shield /><strong>Palmi PasswordVault</strong></div>
       <nav>{(['Dashboard', 'Credentials', 'Categories', 'Security', 'Backup'] as Page[]).map((item) =>
@@ -407,7 +407,7 @@ function App() {
           <Audit ok text="Master password is held by the native vault session and zeroized on lock." />
           <Audit ok text="Auto-lock runs from the Rust process." />
           <Audit ok text="OS keychain integration is available when the platform store is supported." />
-          <Audit ok text="Browser persistence is limited to the non-sensitive theme preference." />
+          <Audit ok text="Browser persistence is limited to non-sensitive UI preferences; credentials remain native-only." />
           <Audit ok={false} text="Clipboard clearing is platform-dependent; PasswordVault does not claim it can erase the OS clipboard." />
         </div></Panel>
         <Panel title="Session controls"><div className="sessionControls">
