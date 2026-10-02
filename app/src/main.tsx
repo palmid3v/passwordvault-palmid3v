@@ -12,6 +12,8 @@ import './styles.css';
 type Theme = 'light' | 'dark' | 'system';
 type Page = 'Dashboard' | 'Credentials' | 'Categories' | 'Security' | 'Backup';
 type Importance = 'Normal' | 'High' | 'Critical';
+type TwoFactorFilter = 'All' | 'Enabled' | 'Disabled';
+type SortOption = 'service-asc' | 'service-desc' | 'updated-desc' | 'updated-asc' | 'importance-desc' | 'status-asc';
 type Modal = 'edit' | 'view' | 'master' | null;
 type VaultAction = 'create' | 'open' | 'import' | 'keychain' | null;
 
@@ -31,6 +33,9 @@ function App() {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('All');
   const [importance, setImportance] = useState<Importance | 'All'>('All');
+  const [status, setStatus] = useState('All');
+  const [twofaFilter, setTwofaFilter] = useState<TwoFactorFilter>('All');
+  const [sortOption, setSortOption] = useState<SortOption>('service-asc');
   const [modal, setModal] = useState<Modal>(null);
   const [vaultAction, setVaultAction] = useState<VaultAction>(null);
   const [masterPassword, setMasterPassword] = useState('');
@@ -61,12 +66,58 @@ function App() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  const filtered = useMemo(() => credentials.filter((credential) => {
-    const haystack = [credential.service, credential.username, credential.email, credential.status, credential.phone, credential.category, credential.url, credential.notes].join(' ').toLowerCase();
-    return haystack.includes(query.toLowerCase())
-      && (category === 'All' || credential.category === category)
-      && (importance === 'All' || credential.importance === importance);
-  }), [credentials, query, category, importance]);
+  const statuses = useMemo(() => Array.from(
+    new Set(credentials.map((credential) => credential.status.trim()).filter(Boolean))
+  ).sort((left, right) => left.localeCompare(right)), [credentials]);
+
+  const filtered = useMemo(() => {
+    const result = credentials.filter((credential) => {
+      const haystack = [
+        credential.service,
+        credential.username,
+        credential.email,
+        credential.status,
+        credential.phone,
+        credential.category,
+        credential.url,
+        credential.notes
+      ].join(' ').toLowerCase();
+
+      return haystack.includes(query.toLowerCase())
+        && (category === 'All' || credential.category === category)
+        && (importance === 'All' || credential.importance === importance)
+        && (status === 'All' || credential.status === status)
+        && (twofaFilter === 'All'
+          || (twofaFilter === 'Enabled' && credential.twofa)
+          || (twofaFilter === 'Disabled' && !credential.twofa));
+    });
+
+    const importanceRank: Record<Importance, number> = {
+      Critical: 3,
+      High: 2,
+      Normal: 1
+    };
+
+    result.sort((left, right) => {
+      switch (sortOption) {
+        case 'service-desc':
+          return right.service.localeCompare(left.service);
+        case 'updated-desc':
+          return right.updated.localeCompare(left.updated);
+        case 'updated-asc':
+          return left.updated.localeCompare(right.updated);
+        case 'importance-desc':
+          return importanceRank[right.importance] - importanceRank[left.importance];
+        case 'status-asc':
+          return left.status.localeCompare(right.status);
+        case 'service-asc':
+        default:
+          return left.service.localeCompare(right.service);
+      }
+    });
+
+    return result;
+  }, [credentials, query, category, importance, status, twofaFilter, sortOption]);
 
   const refresh = async (nextSummary?: VaultSummary) => {
     const next = nextSummary ?? await nativeVault.status();
@@ -325,9 +376,38 @@ function App() {
 
       {page === 'Credentials' && <Panel title={'Credential vault · ' + filtered.length} action={<button className="primary" onClick={openNew}><Plus /> New</button>}>
         <div className="filters">
-          <select value={category} onChange={(event) => setCategory(event.target.value)}><option>All</option>{categories.map((item) => <option key={item}>{item}</option>)}</select>
-          <select value={importance} onChange={(event) => setImportance(event.target.value as Importance | 'All')}><option>All</option><option>Normal</option><option>High</option><option>Critical</option></select>
-          {(query || category !== 'All' || importance !== 'All') && <button onClick={() => { setQuery(''); setCategory('All'); setImportance('All'); }}>Clear filters</button>}
+          <select aria-label="Filter by category" value={category} onChange={(event) => setCategory(event.target.value)}>
+            <option value="All">Category: All</option>
+            {categories.map((item) => <option key={item} value={item}>Category: {item}</option>)}
+          </select>
+          <select aria-label="Filter by importance" value={importance} onChange={(event) => setImportance(event.target.value as Importance | 'All')}>
+            <option value="All">Importance: All</option>
+            <option>Normal</option><option>High</option><option>Critical</option>
+          </select>
+          <select aria-label="Filter by status" value={status} onChange={(event) => setStatus(event.target.value)}>
+            <option value="All">Status: All</option>
+            {statuses.map((item) => <option key={item} value={item}>Status: {item}</option>)}
+          </select>
+          <select aria-label="Filter by 2FA" value={twofaFilter} onChange={(event) => setTwofaFilter(event.target.value as TwoFactorFilter)}>
+            <option value="All">2FA: All</option><option value="Enabled">2FA: Enabled</option><option value="Disabled">2FA: Disabled</option>
+          </select>
+          <select aria-label="Sort credentials" value={sortOption} onChange={(event) => setSortOption(event.target.value as SortOption)}>
+            <option value="service-asc">Sort: Service A–Z</option>
+            <option value="service-desc">Sort: Service Z–A</option>
+            <option value="updated-desc">Sort: Updated newest</option>
+            <option value="updated-asc">Sort: Updated oldest</option>
+            <option value="importance-desc">Sort: Importance</option>
+            <option value="status-asc">Sort: Status A–Z</option>
+          </select>
+          {(query || category !== 'All' || importance !== 'All' || status !== 'All' || twofaFilter !== 'All') && (
+            <button onClick={() => {
+              setQuery('');
+              setCategory('All');
+              setImportance('All');
+              setStatus('All');
+              setTwofaFilter('All');
+            }}>Clear filters</button>
+          )}
         </div>
         {filtered.length ? <CredentialTable rows={filtered} onView={(item) => { setSelected(item); setModal('view'); }} onEdit={openEdit} onDelete={removeCredential} onCopy={copyValue} /> : <Empty onAdd={openNew} />}
       </Panel>}
