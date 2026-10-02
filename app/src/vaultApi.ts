@@ -6,6 +6,8 @@ export type Credential = {
   category: string;
   username: string;
   email: string;
+  status: string;
+  phone: string;
   url: string;
   password: string;
   notes: string;
