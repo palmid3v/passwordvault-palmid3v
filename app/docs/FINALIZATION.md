@@ -27,8 +27,8 @@ These items are implemented in source; that does not establish production readin
 3. Packaged Tauri app validation for idle lock, minimize, suspend/resume, and recovery.
 4. Clipboard expiration/cleanup and process-exit behavior.
 5. Secure-memory, IPC, React state, logging, and error-message review.
-6. Failure-safe atomic persistence that preserves the previous valid KDBX if a save fails.
-7. Restrictive CSP and minimal Tauri capabilities.
+6. Failure-safe KDBX replacement, rollback tests, and crash-consistency validation across supported operating systems.
+7. Verify the restrictive CSP in packaged builds and review minimal Tauri capabilities.
 8. Corrupt/malformed input, wrong-password, import/export recovery, and concurrency regressions.
 9. Current CI and runtime evidence recorded with platform and toolchain versions.
 
