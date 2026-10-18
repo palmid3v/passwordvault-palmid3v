@@ -1,90 +1,78 @@
 # CONTEXT — PasswordVault
 
 ## Identity
-
 - Product: PasswordVault
-- Type: Desktop password-manager foundation
-- Developer/signature: PalmiD3v
-- Security sensitivity: High
+- Signature: PasswordVault · by PalmiD3v
+- Type: Local-first desktop password manager
+- Repository: https://github.com/palmid3v/passwordvault-palmid3v
+- Default branch: `main`
 
-## Purpose
+## Current project status
 
-Build a local-first desktop vault with a native security boundary. React is the presentation layer; Tauri commands connect to a Rust VaultSession.
+The project owner has approved functional completion based on their reported desktop usage and has asked not to carry out additional manual CLI or security-audit work as part of this close-out.
 
-## Current architecture
+The latest recorded GitHub Actions run for commit `cddab74906db11c95011770947b214528a0126eb` passed both the frontend build and native Rust test jobs:
+https://github.com/palmid3v/passwordvault-palmid3v/actions/runs/39156510514
 
-~~~text
-React
-  → Tauri commands
+This status records functional project closure, not an independent security audit, formal certification, or a guarantee for every operating system.
+
+## Architecture
+
+```text
+React + TypeScript
+  → Tauri 2 commands
     → Rust VaultSession
       → encrypted KDBX4
       → optional OS keychain
-~~~
+```
 
-## Current capabilities
+The native Rust layer owns sensitive vault operations, persistence, lock/auto-lock, and session cleanup. Do not add plaintext credential persistence to browser storage.
 
-- Credential CRUD
-- Search and filters
-- Password generation
-- Clipboard actions
-- Themes
-- Responsive UI
-- KDBX4 encrypted persistence
-- Vault open/save/import/export
-- Native lock
-- Native auto-lock
-- Rust zeroization
-- OS keychain integration
-- Native security tests
+## Implemented product scope
 
-## Security rules
+- Dashboard and credential CRUD.
+- Search, category and importance filters.
+- Password generation, strength feedback, visibility and clipboard actions.
+- Dark/light/system themes and responsive UI.
+- KDBX4 create/open/save/import/export.
+- Native session lock and inactivity auto-lock.
+- Best-effort zeroization and optional OS keychain integration.
+- Native file dialogs and React-to-Rust API wrapper.
+- Tauri content security policy and GitHub Actions workflow.
 
-- No credentials in browser persistence.
-- No real KDBX files in Git.
-- No secrets in Git.
-- Do not invent cryptography.
-- Use established encrypted-vault implementations.
-- Treat secure-memory behavior as not formally audited.
-- Validate platform keychain behavior.
+## Functional checks reported by the owner
 
-## Production gate
+Using a test vault and fictitious credentials, the owner reported that the app opens, creates a vault, saves and persists credentials across restart, rejects an incorrect master password without modifying the vault, and locks after inactivity. Clipboard behavior, keychain behavior, and KDBX4 interoperability were also reported as tested by the owner. These outcomes were not independently observed by this documentation update.
 
-Required before real credential use:
-- KDBX interoperability
-- keychain validation
-- packaged Tauri validation
-- clipboard lifecycle review
-- memory/security review
-- import/export failure recovery
-- regression testing
-- final security audit
+## Security and release wording
+
+- Do not claim independent security audit or certification.
+- Describe zeroization as best-effort, not a formal secure-memory guarantee.
+- Clipboard and keychain behavior can vary by operating system.
+- Do not promise crash-atomic durability without platform-specific evidence.
+- Never commit KDBX files, credential exports, backups, passwords, recovery codes, or secrets.
+- Keep sensitive operations in Rust and preserve the React → Tauri → Rust boundary.
 
 ## Development
 
-~~~bash
+```bash
 cd app
 npm install
-npm run dev
-~~~
-
-Desktop:
-
-~~~bash
-cd app
 npm run tauri dev
-~~~
+```
 
-Native tests:
+Frontend-only:
 
-~~~bash
-cd app/src-tauri
-cargo test
-~~~
+```bash
+cd app
+npm run dev
+```
 
 ## Documentation
 
-See app/docs/ARCHITECTURE.md, app/docs/SECURITY.md, and app/docs/FINALIZATION.md.
+- `app/docs/ARCHITECTURE.md`
+- `app/docs/SECURITY.md`
+- `app/docs/FINALIZATION.md`
+- `app/docs/CONTEXT.md`
 
-## Rule for future work
-
-Any credential, encryption, persistence, import/export, locking, or key-management feature must preserve the React → Tauri → Rust security boundary.
+Future work should be limited to concrete issues or platform/release requirements rather than adding unrelated features.
