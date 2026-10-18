@@ -284,7 +284,7 @@ function App() {
 
   if (!isTauri) {
     return <div className="app dark"><div className="lockedScreen"><div className="lockedCard">
-      <div className="brandMark"><Shield /></div><span className="eyebrow">PALMI-D3V / DESKTOP ONLY</span>
+      <div className="brandMark"><Shield /></div><span className="eyebrow">PasswordVault · by PalmiD3v</span>
       <h1>Native vault required</h1>
       <p>PasswordVault now uses Tauri/Rust for encrypted KDBX storage. The browser preview does not handle credentials or create plaintext fallbacks.</p>
       <small>Run the desktop app with the Tauri development command.</small>
@@ -294,7 +294,7 @@ function App() {
   if (!summary || summary.locked) {
     return <div className="app dark">
       <div className="lockedScreen"><div className="lockedCard vaultGate">
-        <div className="brandMark"><Shield /></div><span className="eyebrow">PALMI-D3V / ENCRYPTED VAULT</span>
+        <div className="brandMark"><Shield /></div><span className="eyebrow">PasswordVault · by PalmiD3v</span>
         <h1>{summary?.path ? 'Vault locked' : 'Open your vault'}</h1>
         <p>{summary?.path ? 'Unlock the existing encrypted KDBX vault to continue.' : 'Create a new encrypted KDBX vault or open an existing KeePass database.'}</p>
         <div className="gateActions">
@@ -312,7 +312,7 @@ function App() {
 
   return <div className="app dark">
     <aside className={mobileNav ? 'open' : ''}>
-      <div className="brand"><Shield /><strong>Palmi PasswordVault</strong></div>
+      <div className="brand"><Shield /><div className="brandCopy"><strong>PasswordVault</strong><span className="brandSignature">by PalmiD3v</span></div></div>
       <nav>{(['Dashboard', 'Credentials', 'Categories', 'Security', 'Backup'] as Page[]).map((item) =>
         <button key={item} className={page === item ? 'active' : ''} onClick={() => nav(item)}>
           {item === 'Dashboard' ? <LayoutDashboard /> : item === 'Credentials' ? <KeyRound /> : item === 'Categories' ? <FolderOpen /> : item === 'Security' ? <ShieldCheck /> : <Archive />}{item}
@@ -326,7 +326,7 @@ function App() {
     <main>
       <header>
         <button className="mobileMenu" onClick={() => setMobileNav((value) => !value)} aria-label="Open navigation"><Menu /></button>
-        <div><div className="eyebrow">PALMI-D3V / ENCRYPTED KDBX</div><h1>{page}</h1></div>
+        <div><div className="eyebrow">PASSWORDVAULT / ENCRYPTED KDBX</div><h1>{page}</h1></div>
         <div className="headerActions">
           <div className="search"><Search /><input aria-label="Search credentials" placeholder="Search credentials..." value={query} onChange={(event) => setQuery(event.target.value)} /></div>
           <button className="primary" onClick={openNew}><Plus /> New credential</button>
