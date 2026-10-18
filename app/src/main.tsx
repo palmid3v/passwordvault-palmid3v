@@ -2,7 +2,7 @@ import { StrictMode, useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import {
-  AlertTriangle, Check, ChevronDown, Copy, Eye, EyeOff, FileDown, FileUp,
+  AlertTriangle, Check, Copy, Eye, EyeOff, FileDown, FileUp,
   Archive, FolderOpen, KeyRound, LayoutDashboard, Lock, Menu, Pencil, Plus, Search, Shield, ShieldCheck, Sun,
   Trash2, Unlock, X, Zap
 } from 'lucide-react';
