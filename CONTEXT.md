@@ -1,10 +1,10 @@
-# CONTEXT — PALMI PasswordVault
+# CONTEXT — PasswordVault
 
 ## Identity
 
 - Product: PasswordVault
 - Type: Desktop password-manager foundation
-- Developer: PALMI-D3V
+- Developer/signature: PalmiD3v
 - Security sensitivity: High
 
 ## Purpose
