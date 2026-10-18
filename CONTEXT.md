@@ -76,3 +76,9 @@ npm run dev
 - `app/docs/CONTEXT.md`
 
 Future work should be limited to concrete issues or platform/release requirements rather than adding unrelated features.
+
+## Documentation checkpoint — 2026-10-18
+
+README.md actualizado con la arquitectura Tauri/Rust y el formato KDBX4. Estado funcional registrado por el proyecto y CI documentada como pasada; no afirmar auditoría independiente, certificación formal ni garantía de seguridad absoluta. Evitar nuevos claims sin evidencia.
+
+Status labels describe the latest documented evidence, not a guarantee that every workflow is complete. Update this checkpoint when new validation results arrive.
