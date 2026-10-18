@@ -1,16 +1,18 @@
-# Palmi PasswordVault — Project Context
+# PasswordVault — Project Context
 
 > **Purpose:** Persistent context for future development sessions.
 >
-> **Last updated:** 2026-09-30
+> **Last updated:** 2026-10-18
 >
-> **Repository:** `palmid3v/passwordvault`
+> **Functional close-out:** Approved by the project owner. See [FINALIZATION.md](FINALIZATION.md) for current status and CI evidence.
+>
+> **Repository:** `palmid3v/passwordvault-palmid3v`
 
 ---
 
 ## 1. Project identity
 
-**Name:** Palmi PasswordVault
+**Name:** PasswordVault
 
 **Type:** Local-first desktop password manager.
 
@@ -18,7 +20,7 @@
 
 **Primary goal:** Provide a desktop password vault with a React UI and a native Rust security boundary for encrypted credential storage.
 
-The project should not be treated as a production password manager until the remaining interoperability, platform, and security validation gates are complete.
+The project owner considers the functional development phase complete. This is not an independent security audit or formal certification; retain the limitations in SECURITY.md.
 
 ---
 
@@ -421,11 +423,13 @@ Completed:
 
 ---
 
-## 14. Production gate
+## 14. Functional close-out and limitations
 
-PasswordVault is **not yet production-safe**.
+The project owner has approved functional completion and asked not to perform additional manual CLI or security-audit work for this close-out. The latest recorded CI run passed frontend build and native Rust tests; see [FINALIZATION.md](FINALIZATION.md).
 
-Before real credentials are used, complete:
+Functional completion does not establish independent security audit, formal certification, secure-memory guarantees, or platform-specific release validation. Preserve the limitations documented in SECURITY.md.
+
+The following items are outside the scope of the owner's requested close-out and should only be revisited if a concrete release requirement or defect calls for them:
 
 ### Priority 1 — Native validation
 
@@ -480,26 +484,6 @@ Before real credentials are used, complete:
 
 ---
 
-## 16. Recommended next work
+## 16. Future work
 
-The next development session should focus on **validation rather than adding more UI**:
-
-```text
-CI
- ↓
-cargo tests
- ↓
-KDBX interoperability
- ↓
-Keychain validation
- ↓
-Auto-lock validation
- ↓
-Clipboard review
- ↓
-Security audit
- ↓
-Release candidate
-```
-
-Avoid adding unrelated features until the native vault lifecycle is validated.
+The functional development phase is closed by the project owner. Future work should address a concrete defect, explicitly requested feature, or distribution requirement. Preserve the React → Tauri → Rust security boundary and do not make security claims beyond the available evidence.
