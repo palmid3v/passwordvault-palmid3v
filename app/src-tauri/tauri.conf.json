@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Palmi PasswordVault",
+  "productName": "PasswordVault",
   "version": "1.0.0",
   "identifier": "com.palmid3v.passwordvault",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Palmi PasswordVault",
+        "title": "PasswordVault · by PalmiD3v",
         "width": 1280,
         "height": 820,
         "minWidth": 950,
