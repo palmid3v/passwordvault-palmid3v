@@ -487,7 +487,11 @@ fn write_kdbx(
         }
     }
 
-    let tmp_path = path.with_extension("kdbx.tmp");
+    let file_name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or(VaultError::InvalidPath)?;
+    let tmp_path = path.with_file_name(format!(".{file_name}.{}.tmp", uuid::Uuid::new_v4()));
     {
         let file = File::create(&tmp_path)?;
         let mut writer = BufWriter::new(file);
@@ -500,11 +504,43 @@ fn write_kdbx(
             .sync_all()?;
     }
 
-    if path.exists() {
-        fs::remove_file(path)?;
+    if let Err(error) = replace_file_preserving_previous(&tmp_path, path) {
+        let _ = fs::remove_file(&tmp_path);
+        return Err(VaultError::Io(error));
     }
-    fs::rename(tmp_path, path)?;
     Ok(())
+}
+
+fn replace_file_preserving_previous(tmp_path: &Path, path: &Path) -> std::io::Result<()> {
+    if !path.exists() {
+        return fs::rename(tmp_path, path);
+    }
+
+    let file_name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("vault.kdbx");
+    let backup_path = path.with_file_name(format!(".{file_name}.{}.bak", uuid::Uuid::new_v4()));
+
+    fs::rename(path, &backup_path)?;
+    match fs::rename(tmp_path, path) {
+        Ok(()) => {
+            // The new vault is in place. A backup cleanup failure must not
+            // turn a successful save into a reported failure.
+            let _ = fs::remove_file(backup_path);
+            Ok(())
+        }
+        Err(replace_error) => match fs::rename(&backup_path, path) {
+            Ok(()) => Err(replace_error),
+            Err(restore_error) => Err(std::io::Error::new(
+                restore_error.kind(),
+                format!(
+                    "Could not install new vault ({replace_error}) or restore previous vault from {} ({restore_error})",
+                    backup_path.display()
+                ),
+            )),
+        },
+    }
 }
 
 fn entry_to_record(entry: &keepass::db::EntryRef<'_>) -> Result<CredentialRecord, VaultError> {
@@ -689,6 +725,43 @@ mod tests {
         assert!(reopened.open(path.to_str().unwrap(), "wrong-password").is_err());
 
         let _ = fs::remove_file(path);
+    }
+
+    #[test]
+    fn failed_replacement_restores_previous_vault_file() {
+        let directory = env::temp_dir().join(format!("palmi-passwordvault-replace-{}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(&directory).unwrap();
+        let destination = directory.join("vault.kdbx");
+        let missing_temporary = directory.join("missing.tmp");
+        fs::write(&destination, b"previous-valid-vault").unwrap();
+
+        let result = replace_file_preserving_previous(&missing_temporary, &destination);
+
+        assert!(result.is_err());
+        assert_eq!(fs::read(&destination).unwrap(), b"previous-valid-vault");
+        assert_eq!(
+            fs::read_dir(&directory).unwrap().count(),
+            1,
+            "successful rollback should leave no backup behind"
+        );
+        let _ = fs::remove_dir_all(directory);
+    }
+
+    #[test]
+    fn successful_replacement_installs_new_vault_file() {
+        let directory = env::temp_dir().join(format!("palmi-passwordvault-replace-{}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(&directory).unwrap();
+        let destination = directory.join("vault.kdbx");
+        let temporary = directory.join("new.tmp");
+        fs::write(&destination, b"previous-valid-vault").unwrap();
+        fs::write(&temporary, b"new-valid-vault").unwrap();
+
+        replace_file_preserving_previous(&temporary, &destination).unwrap();
+
+        assert_eq!(fs::read(&destination).unwrap(), b"new-valid-vault");
+        assert!(!temporary.exists());
+        assert_eq!(fs::read_dir(&directory).unwrap().count(), 1);
+        let _ = fs::remove_dir_all(directory);
     }
 
     #[test]
