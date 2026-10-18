@@ -1,162 +1,118 @@
 # 🔐 PasswordVault
 
-Desktop password-manager foundation built with React, TypeScript, Vite, Tauri 2, and Rust.
+**PasswordVault · by PalmiD3v** is a local-first desktop password manager built with React, TypeScript, Vite, Tauri 2, and Rust.
 
-> **Current status:** Native encrypted KDBX4 lifecycle, native lock/auto-lock, zeroization, OS keychain integration, KDBX import/export, and native security tests are implemented. The project remains under security validation and is not approved for real production credentials yet.
+> **Project status:** Functional implementation and UI are considered complete by the project owner. The latest GitHub Actions run passed both the frontend production build and the native Rust test job. This is not a claim of independent security audit or formal security certification.
 
-## 🎯 Product scope
+## Product
 
-PasswordVault is a local-first desktop vault designed around a strict security boundary:
+PasswordVault is designed to keep vault operations in the native layer rather than treating the browser UI as the security boundary.
 
-~~~text
-React UI
-   │
-   ▼
-Tauri command boundary
-   │
-   ▼
+```text
+React + TypeScript
+       │
+       ▼
+Tauri commands
+       │
+       ▼
 Rust VaultSession
-   │
-   ├── master password
-   ├── encrypted KDBX4 persistence
-   ├── auto-lock
-   ├── zeroized session data
-   └── optional OS keychain
-~~~
+  ├─ KDBX4 encrypted vault
+  ├─ save / import / export
+  ├─ lock / inactivity auto-lock
+  ├─ sensitive-session cleanup
+  └─ optional OS keychain
+```
 
-Sensitive vault operations stay on the native side whenever possible.
+## Features
 
-## ✨ Current capabilities
+### Desktop experience
+- Dashboard and credential management (create, view, edit, delete).
+- Search, category and importance filters.
+- Password generation and strength feedback.
+- Password visibility controls and clipboard actions.
+- Dark, light and system theme options.
+- Responsive application layout and locked, empty and warning states.
+- Native file dialogs.
 
-### UI
+### Vault lifecycle
+- KeePass-compatible KDBX4 create, open, save, import and export flows.
+- Native Rust session and lock handling.
+- Configurable inactivity auto-lock.
+- Best-effort zeroization of sensitive session fields.
+- Optional OS keychain integration.
 
-- 📊 Dashboard/security posture
-- 🔑 Credential CRUD
-- 🔎 Search
-- 🗂️ Category and importance filters
-- 🔄 Web Crypto password generation
-- 💪 Password-strength feedback
-- 📋 Clipboard actions
-- 👁️ Password visibility controls
-- 🌙 Light/dark/system theme
-- 📱 Responsive UI
-- ⚠️ Empty/warning/locked states
-
-### Native vault
-
-- 🔐 KeePass-compatible KDBX4 persistence
-- 🔑 Master-password creation/opening
-- 📥 KDBX import/open
-- 📤 KDBX export
-- 💾 Native save lifecycle
-- 🔒 Native lock
-- ⏱️ Native auto-lock
-- 🧹 Rust zeroization
-- 🗝️ Optional OS keychain storage
-- 📁 Native file dialogs
-- 🔄 React ↔ Rust CRUD integration
-- 🧪 Native vault tests
-
-## 🛡️ Security boundary
-
-Rules:
-
-- Never invent cryptography.
-- Never persist decrypted credentials in browser storage.
-- Never commit KDBX files, credentials, master passwords, or recovery material.
-- Keep sensitive session handling in Rust where possible.
-- Treat the current memory handling as not formally audited secure memory.
-- Validate KDBX interoperability and platform keychain behavior before production use.
-
-## 🛠️ Technology
+## Technology
 
 | Technology | Role |
 | --- | --- |
-| React | UI |
-| TypeScript | Application language |
-| Vite | Frontend tooling |
-| Tauri 2 | Desktop bridge |
-| Rust | Native security layer |
-| KeePass/KDBX library | Encrypted vault format |
-| zeroize | Sensitive memory cleanup |
-| keyring | OS keychain integration |
+| React + TypeScript | User interface |
+| Vite | Frontend build |
+| Tauri 2 | Desktop runtime and native bridge |
+| Rust | Vault/session operations |
+| KeePass-compatible KDBX library | Encrypted vault format |
+| zeroize | Best-effort cleanup of sensitive memory |
 
-## 📁 Repository structure
+## Repository map
 
-~~~text
+```text
 passwordvault-palmid3v/
 ├── app/
-│   ├── src/              # React client
-│   ├── src-tauri/        # Rust/Tauri native layer
-│   ├── docs/             # Architecture/security/finalization docs
-│   └── package.json
-├── .github/              # Native/frontend CI
+│   ├── src/              # React/TypeScript UI and native API wrapper
+│   ├── src-tauri/        # Rust/Tauri desktop application
+│   └── docs/             # Architecture, security and finalization notes
+├── .github/workflows/    # Frontend build and native test CI
 ├── archive/
 ├── CONTEXT.md
 └── README.md
-~~~
+```
 
-## 📚 Documentation
+## Run locally
 
-- app/docs/ARCHITECTURE.md
-- app/docs/SECURITY.md
-- app/docs/FINALIZATION.md
-- CONTEXT.md
+Requirements: Node.js/npm, Rust, and the platform prerequisites for Tauri 2.
 
-## 🚀 Development
+From the repository root:
 
-~~~bash
+```bash
 cd app
 npm install
-npm run dev
-~~~
-
-For the desktop app:
-
-~~~bash
-cd app
 npm run tauri dev
-~~~
+```
 
-Tauri development requires the Rust toolchain and platform prerequisites.
+Frontend-only development:
 
-## 🧪 Validation
-
-Frontend:
-
-~~~bash
+```bash
 cd app
-npm ci
-npm run build
-~~~
+npm run dev
+```
 
-Native:
+## CI status
 
-~~~bash
-cd app/src-tauri
-cargo test
-~~~
+GitHub Actions workflow: [PasswordVault Build](https://github.com/palmid3v/passwordvault-palmid3v/actions/workflows/passwordvault-build.yml).
 
-## 📌 Production gate
+The latest recorded run on `main` passed:
+- `npm ci` and `npm run build`
+- `cargo test`
 
-Remaining validation includes KDBX interoperability, OS keychain behavior, packaged-app auto-lock, clipboard lifecycle, secure-memory review, import/export failure recovery, and security regression testing.
+These CI results confirm those jobs passed on the recorded commit; they do not replace owner-reported desktop checks or establish an independent security audit.
 
-## 🚫 Never commit
+## Security notes
 
-~~~text
-.kdbx
-credential exports
-vault backups
-master passwords
-recovery codes
-.env secrets
-real credentials
-~~~
+- The owner has reported successful functional checks using a test vault and fictitious credentials.
+- Sensitive vault operations remain in the Rust/Tauri layer.
+- Zeroization is best-effort and is not a formal secure-memory guarantee.
+- Clipboard clearing and OS keychain behavior can vary by platform.
+- Do not commit vault files, credential exports, backups, passwords, recovery codes, or secrets.
+- Do not describe PasswordVault as independently security-audited or certified.
 
-## 📚 Project context
+The project owner has chosen to close the functional development phase without additional manual CLI or security-audit work. This documents that project decision; it does not claim that every platform-specific security property has been independently verified.
 
-See CONTEXT.md for the security boundary, current lifecycle, and production-gate rules.
+## Documentation
+
+- [Architecture](app/docs/ARCHITECTURE.md)
+- [Security model and limitations](app/docs/SECURITY.md)
+- [Finalization status](app/docs/FINALIZATION.md)
+- [Project context](CONTEXT.md)
 
 ---
 
-**PasswordVault** · by PalmiD3v · 2026
+**PasswordVault** · by PalmiD3v
