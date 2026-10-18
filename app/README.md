@@ -1,68 +1,70 @@
-# 🔐 Palmi PasswordVault v1.0.0
+# 🔐 PasswordVault · by PalmiD3v
 
-Desktop password-manager foundation for Palmi D3v.
+Desktop password manager built with React, TypeScript, Vite, Tauri 2, and Rust.
 
-## 🎯 Purpose
+## Current status
 
-Build a local desktop vault experience with a clear security boundary, credential organization, password generation, backup lifecycle, and a future native encrypted vault implementation.
+The project owner considers the functional application complete. The latest recorded GitHub Actions run passed the frontend production build and native Rust test job. No independent security audit or formal security certification is claimed.
 
-## ✨ Current UI foundation
+## Features
 
-- 📊 Dashboard
-- 🔑 Credentials
-- 🗂️ Categories
-- 🛡️ Security
-- 💾 Backup lifecycle
-- 🔄 Password generator
-- 🔎 Credential search
-- 🌙 Dark/light mode
-- 📱 Responsive layout
+- Dashboard and credential CRUD.
+- Credential search, category and importance filters.
+- Password generation, strength feedback and visibility controls.
+- Clipboard actions.
+- Dark, light and system themes.
+- Responsive layout and locked, empty and warning states.
+- Native encrypted KDBX4 vault lifecycle: create, open, save, import and export.
+- Native lock and inactivity auto-lock.
+- Best-effort sensitive-session cleanup.
+- Optional OS keychain integration and native file dialogs.
 
-## 🧱 Stack
+## Stack
 
 React + TypeScript + Vite + Tailwind CSS + Lucide React + Tauri 2 + Rust.
 
-## 🏗️ Structure
+## Structure
 
 ```text
 app/
 ├── src/
 │   ├── main.tsx
-│   └── styles.css
+│   ├── styles.css
+│   └── vaultApi.ts
 ├── src-tauri/
-│   ├── src/lib.rs
+│   ├── src/
 │   ├── Cargo.toml
 │   └── tauri.conf.json
-├── docs/
-│   ├── ARCHITECTURE.md
-│   └── SECURITY.md
-└── package.json
+└── docs/
+    ├── ARCHITECTURE.md
+    ├── SECURITY.md
+    ├── FINALIZATION.md
+    └── CONTEXT.md
 ```
 
-## 🔐 Security status
+## Development
 
-This release is an architecture/UI foundation. **Do not store production credentials yet.** The native encrypted `.kdbx` vault layer is the next required security milestone.
-
-The current React state is in-memory UI state; it is not the final encrypted persistence layer.
-
-## 🔮 Next security milestone
-
-- Native encrypted vault boundary
-- Secure import/export lifecycle
-- Session locking and memory clearing
-- Validation of encrypted persistence
-- Security-focused tests before production credential use
-
-## ▶️ Development
+Requirements: Node.js/npm, Rust, and Tauri 2 platform prerequisites.
 
 ```bash
 npm install
-npm run dev
 npm run tauri dev
 ```
 
-Tauri development requires the Rust toolchain and Windows prerequisites.
+For frontend-only development:
 
-## 📌 Status
+```bash
+npm run dev
+```
 
-Desktop foundation in active development; the repository is not yet a production password manager.
+## CI
+
+The repository workflow runs `npm ci`, `npm run build`, and `cargo test`. See the [latest workflow runs](https://github.com/palmid3v/passwordvault-palmid3v/actions).
+
+## Security limitations
+
+PasswordVault uses an established KDBX library rather than implementing its own cryptography. Sensitive vault operations are handled by the native Rust layer. Zeroization is best-effort, not a formal secure-memory guarantee; clipboard and keychain behavior may vary by platform. Functional completion does not mean the application has been independently security-audited.
+
+Never commit KDBX files, credential exports, backups, master passwords, recovery codes, or secrets.
+
+See [the security model](docs/SECURITY.md) and [finalization status](docs/FINALIZATION.md).
