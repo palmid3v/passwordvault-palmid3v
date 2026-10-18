@@ -35,9 +35,11 @@ See `../src-tauri/src/vault.rs`, `../src-tauri/src/lib.rs`, and `../src-tauri/ta
 3. Packaged-app auto-lock on inactivity, minimize, suspend/resume, and focus changes.
 4. Clipboard clearing lifecycle and behavior when the application exits or crashes.
 5. Memory exposure review across Rust, Tauri IPC, React state, logs, and error messages.
-6. Import/export failure recovery, including interrupted writes and preserving the previous valid vault.
+6. Import/export failure recovery, including interrupted writes, preserving the previous valid vault, and crash-consistency behavior.
 7. Restrictive CSP and least-privilege Tauri capabilities.
 8. Regression tests for malformed/corrupt files, wrong passwords, concurrency, and state transitions.
 9. Review current CI results and capture reproducible evidence for supported platforms.
+
+The save path now uses a unique same-directory temporary file and attempts to restore the previous vault if replacement fails. This is rollback protection for reported filesystem errors, not proof of crash-atomic durability; crash recovery and platform-specific behavior still require testing.
 
 Until every gate has evidence, PasswordVault remains **not approved for real production credentials**.
