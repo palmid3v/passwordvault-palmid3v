@@ -1,4 +1,4 @@
-# 🔐 PALMI PasswordVault
+# 🔐 PasswordVault
 
 Desktop password-manager foundation built with React, TypeScript, Vite, Tauri 2, and Rust.
 
@@ -159,4 +159,4 @@ See CONTEXT.md for the security boundary, current lifecycle, and production-gate
 
 ---
 
-**PALMI-D3V** · PasswordVault · 2026
+**PasswordVault** · by PalmiD3v · 2026
