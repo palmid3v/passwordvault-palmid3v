@@ -1,4 +1,4 @@
-# Palmi PasswordVault — Architecture v1.0
+# PasswordVault — Architecture
 
 ## Stack
 - React + TypeScript
@@ -6,18 +6,18 @@
 - Tailwind-ready styling system
 - Tauri 2
 - Rust native layer
-- Encrypted vault target: KeePass-compatible `.kdbx`
+- Encrypted vault format: KeePass-compatible `.kdbx`
 
 ## Security boundary
 The browser UI is not the final trust boundary. Native vault operations belong in Rust/Tauri.
 
 ## Vault lifecycle
-1. Application starts locked.
-2. User imports an encrypted vault.
+1. Application starts in its locked state.
+2. User creates or opens an encrypted vault.
 3. User authenticates with the master password.
-4. Decrypted data exists only for the active session.
-5. Lock/exit requires an encrypted save/export.
-6. Session data is cleared before returning to the lock screen.
+4. Decrypted credential data is available to the active session through the native bridge.
+5. Vault changes are persisted through native KDBX operations.
+6. Locking clears sensitive native session fields on a best-effort basis.
 
 ## Never commit
 - `.kdbx`
