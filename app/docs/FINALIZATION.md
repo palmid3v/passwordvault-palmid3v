@@ -1,38 +1,42 @@
 # PasswordVault — Finalization Status
 
-## Completed in the UI shell
+**Current status:** Native lifecycle implemented in source; production/security approval remains pending.
 
-- Light, dark and system themes with persisted theme preference.
-- Responsive navigation and mobile layout.
-- Credential create, view, edit and delete flows.
-- Search, category and importance filters.
-- Password visibility controls and Web Crypto password generation.
-- Basic password-strength feedback.
-- Username/password clipboard actions.
-- Empty, warning, audit and locked-session states.
-- Session lock clears all in-memory credential state.
-- Backup screen clearly distinguishes unavailable native operations.
-- Security screen no longer claims that the UI is encrypted.
+## UI shell
 
-## Intentionally not implemented
+- Theme and responsive navigation.
+- Credential create/view/edit/delete, search, category and importance filters.
+- Password visibility, Web Crypto password generation, and basic strength feedback.
+- Clipboard actions and empty/warning/audit/locked states.
+- Frontend communicates with the native vault through Tauri commands.
 
-The following must not be simulated in React:
+## Native implementation present in source
 
-1. Encrypted vault persistence.
-2. Master-password authentication.
-3. KeePass-compatible .kdbx import/export.
-4. Native auto-lock and secure session timeout.
-5. Secure memory cleanup beyond clearing JavaScript references.
-6. OS keychain integration.
-7. Native secure file dialogs.
-8. Security-focused integration tests around the encrypted vault boundary.
+- KeePass-compatible KDBX4 create/open/save/export and import/merge.
+- Rust `VaultSession`, native lock and inactivity auto-lock.
+- `zeroize` for credential/session fields.
+- Optional OS keychain storage and native file dialogs.
+- Native test suite and frontend/native CI workflow.
 
-## Production gate
+These items are implemented in source; that does not establish production readiness or prove all platform behavior.
 
-PasswordVault must remain marked **not production safe** until the native Tauri/Rust layer owns the encrypted vault lifecycle and that lifecycle is validated with security-focused tests.
+## Open production gate
 
-## Recommended native architecture
+1. KDBX4 round-trip interoperability with KeePassXC.
+2. Keychain storage, retrieval, clearing, and error handling on supported operating systems.
+3. Packaged Tauri app validation for idle lock, minimize, suspend/resume, and recovery.
+4. Clipboard expiration/cleanup and process-exit behavior.
+5. Secure-memory, IPC, React state, logging, and error-message review.
+6. Failure-safe atomic persistence that preserves the previous valid KDBX if a save fails.
+7. Restrictive CSP and minimal Tauri capabilities.
+8. Corrupt/malformed input, wrong-password, import/export recovery, and concurrency regressions.
+9. Current CI and runtime evidence recorded with platform and toolchain versions.
 
-React UI -> Tauri commands -> Rust vault service -> established encrypted vault library
+## Non-negotiable rules
 
-Do not invent cryptography or move decrypted credentials into localStorage, IndexedDB, or other browser persistence.
+- Do not simulate native encryption or authentication in React.
+- Do not persist decrypted credentials in localStorage, sessionStorage, IndexedDB, or other browser persistence.
+- Do not commit KDBX files, credential exports, backups, master passwords, recovery codes, or secrets.
+- Treat zeroization as best-effort until reviewed; never claim formal secure-memory guarantees without evidence.
+
+**Decision:** NOT APPROVED for real production credentials until the production gate is completed and evidenced.
