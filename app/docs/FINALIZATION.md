@@ -55,3 +55,7 @@ Functional completion is not equivalent to an independent security audit or form
 ## Close-out decision
 
 The functional development phase is considered closed by the project owner. Future changes should address a concrete defect, requested feature, or required distribution task.
+
+## Documentation checkpoint — 2026-10-18
+
+The public README and CONTEXT.md were refreshed. Preserve the existing distinction: functional completion is recorded from owner-reported desktop use and the cited CI run, while an independent security audit/formal certification was not performed. This documentation update is not new security-test evidence.
