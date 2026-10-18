@@ -1,9 +1,9 @@
 # PasswordVault — Security Model
 
-**Status:** Native vault lifecycle implemented; security validation remains open.  
-**Production gate:** NOT APPROVED for real credentials.
+**Functional status:** Project owner reports the manual functional checks as passed.  
+**Security status:** Source implementation and functional checks are not equivalent to an independent security audit.
 
-PasswordVault is a security-sensitive desktop application. The active architecture is React/TypeScript presentation → Tauri commands → Rust `VaultSession` → KeePass-compatible KDBX4 persistence. Implementation is not equivalent to an independent security audit.
+PasswordVault is a security-sensitive desktop application. The architecture is React/TypeScript presentation → Tauri commands → Rust `VaultSession` → KeePass-compatible KDBX4 persistence.
 
 ## Security rules
 
@@ -12,34 +12,38 @@ PasswordVault is a security-sensitive desktop application. The active architectu
 - Never commit KDBX files, credential exports, backups, passwords, recovery codes, or secrets.
 - Keep sensitive session handling in Rust where possible; treat memory zeroization as best-effort, not formally audited secure memory.
 - Clear native credential/session state when locking.
-- Keep clipboard exposure short-lived and validate cleanup behavior on the packaged application.
+- Treat clipboard behavior as platform-dependent; document the actual observed behavior and do not promise OS-wide clipboard erasure unless verified.
 - Keep auto-lock in the native layer and test idle, minimize, suspend/resume, and failure paths.
 - Validate imported KDBX/XLSX inputs and recover safely from malformed files and failed writes.
-- Keep Tauri capabilities minimal and define a restrictive Content Security Policy before production.
+- Keep Tauri capabilities minimal and verify the restrictive Content Security Policy in packaged builds.
 
-## Implemented in source (not independently approved)
+## Implemented in source
 
 - Native KDBX4 create/open/save/export and import/merge paths.
 - Rust session lock and auto-lock enforcement.
 - `zeroize` derives and explicit clearing for credential/session fields.
 - OS keychain integration.
 - Native file dialogs and frontend/native command boundary.
-- Native tests are configured in CI.
+- Native tests configured in CI.
+- CSP configured in `../src-tauri/tauri.conf.json`.
 
-See `../src-tauri/src/vault.rs`, `../src-tauri/src/lib.rs`, and `../src-tauri/tauri.conf.json`.
+## Manual checks reported as passed by the project owner
 
-## Required production gate
+- Vault creation, save, reopen, persistence, and rejection of an incorrect master password.
+- Auto-lock.
+- Clipboard behavior.
+- OS keychain storage/retrieval/clearing.
+- KDBX4 interoperability with KeePassXC.
 
-1. KDBX4 interoperability with KeePassXC in both directions, including metadata and protected fields.
-2. OS keychain behavior and failure modes on each supported OS.
-3. Packaged-app auto-lock on inactivity, minimize, suspend/resume, and focus changes.
-4. Clipboard clearing lifecycle and behavior when the application exits or crashes.
-5. Memory exposure review across Rust, Tauri IPC, React state, logs, and error messages.
-6. Import/export failure recovery, including interrupted writes, preserving the previous valid vault, and crash-consistency behavior.
-7. Restrictive CSP and least-privilege Tauri capabilities.
-8. Regression tests for malformed/corrupt files, wrong passwords, concurrency, and state transitions.
-9. Review current CI results and capture reproducible evidence for supported platforms.
+These are owner-reported results, not independent audit findings.
 
-The save path now uses a unique same-directory temporary file and attempts to restore the previous vault if replacement fails. This is rollback protection for reported filesystem errors, not proof of crash-atomic durability; crash recovery and platform-specific behavior still require testing.
+## Technical release checks to retain as evidence
 
-Until every gate has evidence, PasswordVault remains **not approved for real production credentials**.
+1. Verify current CI results on the latest `main` commit.
+2. Verify CSP and least-privilege Tauri capabilities in a packaged build.
+3. Review memory exposure across Rust, Tauri IPC, React state, logs, and error messages.
+4. Verify malformed/corrupt input, wrong-password, import/export recovery, and concurrency regressions.
+5. Review interrupted-write recovery and cross-platform crash consistency. The save path uses a unique same-directory temporary file and attempts to restore the previous vault when replacement fails; this does not prove crash-atomic durability.
+6. Capture supported OS, packaged version, and toolchain details with reproducible evidence.
+
+Until these technical checks have evidence, do not describe the product as independently security-audited or claim formal secure-memory or crash-atomic guarantees.
