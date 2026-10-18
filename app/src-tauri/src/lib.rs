@@ -6,6 +6,7 @@ use std::time::Duration;
 
 use tauri::State;
 use tauri_plugin_dialog::DialogExt;
+use zeroize::Zeroize;
 use vault::{
     CredentialRecord, KeychainStatus, VaultSession, VaultSummary,
 };
@@ -68,20 +69,28 @@ fn vault_status(state: State<'_, SharedVault>) -> Result<VaultSummary, String> {
 fn vault_create(
     state: State<'_, SharedVault>,
     path: String,
-    master_password: String,
+    mut master_password: String,
 ) -> Result<VaultSummary, String> {
-    let mut vault = shared(&state)?;
-    vault.create(&path, &master_password).map_err(|error| error.to_string())
+    let result = match shared(&state) {
+        Ok(mut vault) => vault.create(&path, &master_password).map_err(|error| error.to_string()),
+        Err(error) => Err(error),
+    };
+    master_password.zeroize();
+    result
 }
 
 #[tauri::command]
 fn vault_open(
     state: State<'_, SharedVault>,
     path: String,
-    master_password: String,
+    mut master_password: String,
 ) -> Result<VaultSummary, String> {
-    let mut vault = shared(&state)?;
-    vault.open(&path, &master_password).map_err(|error| error.to_string())
+    let result = match shared(&state) {
+        Ok(mut vault) => vault.open(&path, &master_password).map_err(|error| error.to_string()),
+        Err(error) => Err(error),
+    };
+    master_password.zeroize();
+    result
 }
 
 #[tauri::command]
@@ -122,10 +131,14 @@ fn vault_import_excel(
 fn vault_merge_kdbx(
     state: State<'_, SharedVault>,
     path: String,
-    master_password: String,
+    mut master_password: String,
 ) -> Result<VaultSummary, String> {
-    let mut vault = shared(&state)?;
-    vault.merge_kdbx(&path, &master_password).map_err(|error| error.to_string())
+    let result = match shared(&state) {
+        Ok(mut vault) => vault.merge_kdbx(&path, &master_password).map_err(|error| error.to_string()),
+        Err(error) => Err(error),
+    };
+    master_password.zeroize();
+    result
 }
 
 #[tauri::command]
