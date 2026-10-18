@@ -1,53 +1,57 @@
 # PasswordVault — Finalization Status
 
-**Functional sign-off:** APPROVED by the project owner based on reported manual test results.  
-**Security/release status:** Functional approval does not replace a code-level security review or platform-specific release verification.
+**Functional status:** COMPLETE — approved by the project owner based on reported desktop use.  
+**CI status:** PASS — latest recorded GitHub Actions run passed frontend build and native Rust test jobs.  
+**Independent security audit:** Not performed as part of this close-out.
 
-## Functional validation reported by the project owner
+## Project-owner functional results
 
-The following manual checks were reported as passing using a test vault and fictitious credentials:
+The owner reported successful checks using a test vault and fictitious credentials:
 
 - Application opens and creates a vault.
-- Credentials can be saved and persist after closing and reopening.
-- An incorrect master password is rejected without changing the vault.
-- Native inactivity auto-lock locks the vault and requires the master password again.
-- Clipboard copy/paste works; clipboard cleanup behavior was tested and recorded by the owner.
-- OS keychain storage, retrieval, and clearing behavior was tested.
-- KDBX4 interoperability with KeePassXC was tested successfully.
+- Credentials save and persist after closing and reopening.
+- An incorrect master password is rejected without modifying the vault.
+- Inactivity auto-lock requires unlocking again.
+- Clipboard behavior was exercised.
+- OS keychain storage/retrieval/clearing was exercised.
+- KDBX4 interoperability with KeePassXC was exercised.
 
-These results are recorded as owner-reported test outcomes; they were not independently observed by this documentation update.
+These are owner-reported results, not independent findings from this documentation update.
 
-## UI shell
+## Current CI evidence
 
-- Theme and responsive navigation.
-- Credential create/view/edit/delete, search, category and importance filters.
-- Password visibility, Web Crypto password generation, and basic strength feedback.
-- Clipboard actions and empty/warning/audit/locked states.
-- Frontend communicates with the native vault through Tauri commands.
+Latest recorded run: https://github.com/palmid3v/passwordvault-palmid3v/actions/runs/39156510514
 
-## Native implementation present in source
+Commit: `cddab74906db11c95011770947b214528a0126eb`
 
-- KeePass-compatible KDBX4 create/open/save/export and import/merge.
-- Rust `VaultSession`, native lock and inactivity auto-lock.
-- `zeroize` for credential/session fields (best effort; not a formal secure-memory guarantee).
-- Optional OS keychain storage and native file dialogs.
-- Native test suite and frontend/native CI workflow.
-- Explicit restrictive CSP configured in Tauri.
+- Frontend job: `npm ci` and `npm run build` — passed.
+- Native job: `cargo test` — passed.
 
-## Remaining technical release checks
+No additional manual CLI or security-audit tasks were requested for this close-out.
 
-1. Verify current CI checks on the latest `main` commit and retain reproducible run links.
-2. Verify CSP behavior in a packaged build and review Tauri capabilities.
-3. Review memory exposure across Rust, Tauri IPC, React state, logs, and error messages.
-4. Review malformed/corrupt input handling, import/export recovery, and concurrency regressions.
-5. Review save replacement and rollback implementation. The code attempts to restore the previous vault if replacement fails, but this is not proof of crash-atomic durability or power-loss safety across operating systems.
-6. Record tested OS, packaged build version, and toolchain versions for release evidence.
+## Functional scope considered complete
 
-## Non-negotiable rules
+- Dashboard, credential CRUD, search, category and importance filters.
+- Password generation, strength feedback, visibility and clipboard actions.
+- Theme options, responsive layout and locked/empty/warning states.
+- Native KDBX4 create/open/save/import/export flows.
+- Native lock and inactivity auto-lock.
+- Optional OS keychain and native file dialogs.
+- React → Tauri → Rust separation for sensitive vault operations.
+- Product naming and signature: **PasswordVault · by PalmiD3v**.
 
-- Do not simulate native encryption or authentication in React.
+## Limitations that remain true
+
+Functional completion is not equivalent to an independent security audit or formal certification. Zeroization is best-effort; clipboard, keychain, packaged-app behavior, and crash recovery can vary by platform. No formal secure-memory or crash-atomic guarantees are claimed.
+
+## Non-negotiable maintenance rules
+
+- Do not implement custom cryptography.
 - Do not persist decrypted credentials in localStorage, sessionStorage, IndexedDB, or other browser persistence.
 - Do not commit KDBX files, credential exports, backups, master passwords, recovery codes, or secrets.
-- Describe zeroization as best-effort; do not claim formal secure-memory guarantees without evidence.
+- Keep sensitive operations in Rust and preserve the React → Tauri → Rust boundary.
+- Do not describe the product as independently security-audited unless a separate audit has actually been completed.
 
-**Decision:** Functional sign-off is approved. Security/release sign-off remains separate until the technical checks above have evidence.
+## Close-out decision
+
+The functional development phase is considered closed by the project owner. Future changes should address a concrete defect, requested feature, or required distribution task.
