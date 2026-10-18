@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import {
   AlertTriangle, Check, ChevronDown, Copy, Eye, EyeOff, FileDown, FileUp,
-  KeyRound, LayoutDashboard, Lock, Pencil, Plus, Search, Shield, Sun,
+  Archive, FolderOpen, KeyRound, LayoutDashboard, Lock, Menu, Pencil, Plus, Search, Shield, ShieldCheck, Sun,
   Trash2, Unlock, X, Zap
 } from 'lucide-react';
 import { nativeVault, type Credential, type VaultSummary } from './vaultApi';
@@ -315,7 +315,7 @@ function App() {
       <div className="brand"><Shield /><strong>Palmi PasswordVault</strong></div>
       <nav>{(['Dashboard', 'Credentials', 'Categories', 'Security', 'Backup'] as Page[]).map((item) =>
         <button key={item} className={page === item ? 'active' : ''} onClick={() => nav(item)}>
-          {item === 'Dashboard' ? <LayoutDashboard /> : item === 'Credentials' ? <KeyRound /> : <Shield />}{item}
+          {item === 'Dashboard' ? <LayoutDashboard /> : item === 'Credentials' ? <KeyRound /> : item === 'Categories' ? <FolderOpen /> : item === 'Security' ? <ShieldCheck /> : <Archive />}{item}
         </button>)}</nav>
       <div className="sideBottom">
         <div className="themeLabel"><Sun /> Dark mode</div>
@@ -325,7 +325,7 @@ function App() {
 
     <main>
       <header>
-        <button className="mobileMenu" onClick={() => setMobileNav((value) => !value)} aria-label="Open navigation"><ChevronDown /></button>
+        <button className="mobileMenu" onClick={() => setMobileNav((value) => !value)} aria-label="Open navigation"><Menu /></button>
         <div><div className="eyebrow">PALMI-D3V / ENCRYPTED KDBX</div><h1>{page}</h1></div>
         <div className="headerActions">
           <div className="search"><Search /><input aria-label="Search credentials" placeholder="Search credentials..." value={query} onChange={(event) => setQuery(event.target.value)} /></div>
