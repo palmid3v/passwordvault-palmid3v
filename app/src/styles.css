@@ -34,6 +34,9 @@ aside { width: 252px; flex: 0 0 252px; padding: 27px 16px 18px; display: flex; f
 .brand { display: flex; align-items: center; gap: 11px; margin: 0 8px 38px; font-size: 13px; letter-spacing: -.25px; }
 .brand svg { width: 35px; height: 35px; padding: 8px; color: #07130c; background: var(--accent); border-radius: 11px; filter: drop-shadow(0 4px 12px #39d98a1c); }
 .brand strong { font-size: 13px; line-height: 1.35; max-width: 130px; }
+.brandCopy { display: grid; gap: 3px; min-width: 0; }
+.brandCopy strong { max-width: 150px; }
+.brandSignature { color: #6f8b79; font-size: 9px; letter-spacing: .08em; line-height: 1.2; }
 aside nav { display: grid; gap: 6px; }
 aside nav button, .sideBottom > button { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 13px; border: 1px solid transparent; border-radius: 10px; background: transparent; color: #9db0a4; text-align: left; font-size: 12px; transition: background .16s ease, color .16s ease, border-color .16s ease; }
 aside nav button svg, .sideBottom > button svg { width: 17px; height: 17px; color: #718a7a; }
